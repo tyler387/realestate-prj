@@ -6,6 +6,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    server: {
+      host: 'localhost',
+      port: 5173,
+      strictPort: true,
+    },
     define: {
       __KAKAO_MAP_KEY__: JSON.stringify(env.VITE_KAKAO_MAP_KEY ?? ''),
     },

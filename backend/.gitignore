@@ -1,0 +1,21 @@
+.gradle/
+.gradle-user-home/
+build/
+out/
+*.log
+
+# Local config and secrets
+application-local.yml
+application-local.yaml
+application-*.local.yml
+application-*.local.yaml
+application-secret.yml
+application-secret.yaml
+application-*.secret.yml
+application-*.secret.yaml
+.env
+.env.*
+secrets.yml
+secrets.yaml
+*.pem
+*.key
