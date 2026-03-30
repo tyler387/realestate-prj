@@ -24,11 +24,13 @@ export const MapView = ({ onMapReady }: MapViewProps) => {
     kakaoMapKey === 'YOUR_APP_KEY' ||
     kakaoMapKey === 'YOUR_JAVASCRIPT_KEY'
 
-  const { data: apartments = [], isFetching } = useQuery({
+  const { data: apartments = [], isFetching, isError, error } = useQuery({
     queryKey: ['markers', bounds],
     queryFn: () => apartmentApi.getMarkers(bounds as MapBounds),
     staleTime: 60000,
     enabled: bounds !== null,
+    retry: 1,
+    refetchOnWindowFocus: false,
   })
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export const MapView = ({ onMapReady }: MapViewProps) => {
     }
 
     if (isPlaceholderKey) {
-      setLoadError('카카오 지도 키가 설정되지 않았습니다. frontend/.env 의 VITE_KAKAO_MAP_KEY 값을 확인하세요.')
+      setLoadError('Kakao map key is missing. Check VITE_KAKAO_MAP_KEY in root .env.')
       return
     }
 
@@ -129,7 +131,7 @@ export const MapView = ({ onMapReady }: MapViewProps) => {
       })
       .catch(() => {
         if (isMounted) {
-          setLoadError(`카카오 지도 SDK를 불러오지 못했습니다. 현재 origin: ${window.location.origin}`)
+          setLoadError(`Failed to load Kakao Maps SDK. Current origin: ${window.location.origin}`)
         }
       })
 
@@ -160,7 +162,9 @@ export const MapView = ({ onMapReady }: MapViewProps) => {
       })
 
       const priceText =
-        apartment.latestSalePrice === null ? '최근 매매가 정보 없음' : `최근 매매가 ${formatPrice(apartment.latestSalePrice)}`
+        apartment.latestSalePrice === null
+          ? 'No recent sale price'
+          : `Latest sale ${formatPrice(apartment.latestSalePrice)}`
 
       const infoWindow = new window.kakao.maps.InfoWindow({
         content: `
@@ -194,9 +198,14 @@ export const MapView = ({ onMapReady }: MapViewProps) => {
 
   return (
     <div className="relative h-full w-full">
-      {isFetching && (
+      {isFetching && !isError && (
         <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-md bg-white/90 px-3 py-1 text-xs shadow">
-          데이터 불러오는 중...
+          Loading map data...
+        </div>
+      )}
+      {isError && (
+        <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-md bg-red-50 px-3 py-1 text-xs text-red-700 shadow">
+          Failed to load markers: {(error as Error)?.message ?? 'Check backend at http://localhost:8081'}
         </div>
       )}
       <div ref={mapContainerRef} className="h-full w-full" />

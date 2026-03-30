@@ -1,39 +1,17 @@
 services:
-  db:
-    image: postgis/postgis:16-3.4
-    container_name: realestate-postgres
-    environment:
-      POSTGRES_DB: realestate
-      POSTGRES_USER: realestate
-      POSTGRES_PASSWORD: password
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U realestate -d realestate"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: realestate-backend
-    depends_on:
-      db:
-        condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/realestate
-      SPRING_DATASOURCE_USERNAME: realestate
-      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
       PUBLIC_DATA_API_KEY: ${PUBLIC_DATA_API_KEY:-dummy}
       KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-dummy}
+      PORT: ${PORT:-8081}
     ports:
-      - "8080:8080"
+      - "8081:8081"
     restart: unless-stopped
-
-volumes:
-  pgdata:

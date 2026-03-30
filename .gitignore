@@ -17,6 +17,7 @@ backend/out/
 backend/.idea/
 backend/*.iml
 backend/*.log
+backend/.java17-home
 
 # Frontend (Node / Vite outputs)
 frontend/node_modules/

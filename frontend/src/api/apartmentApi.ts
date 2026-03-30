@@ -2,7 +2,7 @@ import axios from 'axios'
 import type { ApartmentMarker, MapBounds } from '../types/apartment'
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080',
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081',
   timeout: 10000,
 })
 
