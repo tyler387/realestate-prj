@@ -8,6 +8,14 @@ type MapViewProps = {
   onMapReady: (map: any | null) => void
 }
 
+const escapeHtml = (text: string): string =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+
 export const MapView = ({ onMapReady }: MapViewProps) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<any | null>(null)
@@ -169,8 +177,8 @@ export const MapView = ({ onMapReady }: MapViewProps) => {
       const infoWindow = new window.kakao.maps.InfoWindow({
         content: `
           <div style="padding:8px 10px; font-size:12px; line-height:1.4; white-space:nowrap;">
-            <div style="font-weight:700; margin-bottom:2px;">${apartment.complexName}</div>
-            <div>${priceText}</div>
+            <div style="font-weight:700; margin-bottom:2px;">${escapeHtml(apartment.complexName)}</div>
+            <div>${escapeHtml(priceText)}</div>
           </div>
         `,
       })

@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# bkit runtime files (audit logs, state, snapshots)
+.bkit/
+
 # OS / editor
 .DS_Store
 Thumbs.db

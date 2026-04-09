@@ -38,42 +38,28 @@ for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
-@rem Project-local Java 17 override (optional)
-@rem If backend\.java17-home exists, use its path as JAVA_HOME for this project run only.
-if exist "%APP_HOME%\.java17-home" (
-  set /p LOCAL_JAVA17_HOME=<"%APP_HOME%\.java17-home"
-  if not "%LOCAL_JAVA17_HOME%"=="" (
-    set "JAVA_HOME=%LOCAL_JAVA17_HOME%"
-  )
-)
+@rem Use project-local Java 17 only.
+@rem backend\.java17-home must contain the absolute JDK 17 home path.
+if not exist "%APP_HOME%\.java17-home" goto missingJava17Home
+set /p LOCAL_JAVA17_HOME=<"%APP_HOME%\.java17-home"
+if "%LOCAL_JAVA17_HOME%"=="" goto missingJava17Home
 
-@rem Find java.exe
-if defined JAVA_HOME goto findJavaFromJavaHome
-
-set JAVA_EXE=java.exe
-%JAVA_EXE% -version >NUL 2>&1
-if %ERRORLEVEL% equ 0 goto execute
-
-echo. 1>&2
-echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
-echo. 1>&2
-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
-echo location of your Java installation. 1>&2
-
-goto fail
-
-:findJavaFromJavaHome
-set JAVA_HOME=%JAVA_HOME:"=%
-set JAVA_EXE=%JAVA_HOME%/bin/java.exe
+set "JAVA_HOME=%LOCAL_JAVA17_HOME:"=%"
+set "JAVA_EXE=%JAVA_HOME%\bin\java.exe"
 
 if exist "%JAVA_EXE%" goto execute
 
 echo. 1>&2
-echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
+echo ERROR: Invalid Java 17 path in .java17-home: %JAVA_HOME% 1>&2
 echo. 1>&2
-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
-echo location of your Java installation. 1>&2
+echo Update backend\.java17-home with a valid JDK 17 home path. 1>&2
+goto fail
 
+:missingJava17Home
+echo. 1>&2
+echo ERROR: backend\.java17-home is missing or empty. 1>&2
+echo. 1>&2
+echo Put your JDK 17 home path in backend\.java17-home and retry. 1>&2
 goto fail
 
 :execute

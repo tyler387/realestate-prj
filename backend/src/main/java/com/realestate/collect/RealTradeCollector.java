@@ -72,34 +72,55 @@ public class RealTradeCollector {
     }
 
     private void collectMonthByDistrict(String lawdCd, String sido, String sigungu, String dealYmd, Map<String, Integer> stats) {
-        JsonNode response = webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .scheme("https")
-                        .host("apis.data.go.kr")
-                        .path(PUBLIC_DATA_PATH)
-                        .queryParam("serviceKey", publicDataServiceKey)
-                        .queryParam("LAWD_CD", lawdCd)
-                        .queryParam("DEAL_YMD", dealYmd)
-                        .queryParam("numOfRows", 1000)
-                        .queryParam("_type", "json")
-                        .build())
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .block();
+        final int numOfRows = 1000;
+        int pageNo = 1;
+        int totalFetched = 0;
+        int totalCount;
 
-        JsonNode itemNode = extractItemNode(response);
-        if (itemNode == null || itemNode.isMissingNode() || itemNode.isNull()) {
-            return;
-        }
+        do {
+            final int currentPage = pageNo;
+            JsonNode response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .scheme("https")
+                            .host("apis.data.go.kr")
+                            .path(PUBLIC_DATA_PATH)
+                            .queryParam("serviceKey", publicDataServiceKey)
+                            .queryParam("LAWD_CD", lawdCd)
+                            .queryParam("DEAL_YMD", dealYmd)
+                            .queryParam("numOfRows", numOfRows)
+                            .queryParam("pageNo", currentPage)
+                            .queryParam("_type", "json")
+                            .build())
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
 
-        if (itemNode.isArray()) {
-            for (JsonNode node : itemNode) {
-                saveSingleTrade(node, lawdCd, sido, sigungu, stats);
+            JsonNode body = response == null ? null : response.path("response").path("body");
+            totalCount = body == null ? 0 : body.path("totalCount").asInt(0);
+
+            JsonNode itemNode = extractItemNode(response);
+            if (itemNode == null || itemNode.isMissingNode() || itemNode.isNull()) {
+                break;
             }
-            return;
-        }
 
-        saveSingleTrade(itemNode, lawdCd, sido, sigungu, stats);
+            int pageItemCount = 0;
+            if (itemNode.isArray()) {
+                for (JsonNode node : itemNode) {
+                    saveSingleTrade(node, lawdCd, sido, sigungu, stats);
+                    pageItemCount++;
+                }
+            } else {
+                saveSingleTrade(itemNode, lawdCd, sido, sigungu, stats);
+                pageItemCount = 1;
+            }
+
+            totalFetched += pageItemCount;
+            pageNo++;
+
+            if (pageItemCount < numOfRows) {
+                break;
+            }
+        } while (totalFetched < totalCount);
     }
 
     private JsonNode extractItemNode(JsonNode response) {
