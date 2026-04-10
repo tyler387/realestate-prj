@@ -1,10 +1,11 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { UserInfoCard } from '../components/features/mypage/UserInfoCard'
 import { TabMenu } from '../components/features/mypage/TabMenu'
 import { MyPostList } from '../components/features/mypage/MyPostList'
 import { MyCommentList } from '../components/features/mypage/MyCommentList'
 import { useUserStore } from '../stores/userStore'
+import { useUiStore } from '../stores/uiStore'
 
 type Tab = '내 게시글' | '내 댓글'
 
@@ -12,9 +13,11 @@ export const MyPage = () => {
   const navigate = useNavigate()
   const logout = useUserStore((s) => s.logout)
   const [activeTab, setActiveTab] = useState<Tab>('내 게시글')
+  const showToast = useUiStore((s) => s.showToast)
 
   const handleLogout = () => {
     logout()
+    showToast('로그아웃 되었어요', 'info')
     navigate('/')
   }
 

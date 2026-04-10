@@ -1,11 +1,12 @@
-export type { ApartmentMarker, MapBounds } from './apartment'
+﻿export type { ApartmentMarker, MapBounds } from './apartment'
 
-export type Category = '전체' | '자유' | '질문' | '정보' | '민원' | '거래'
-export type SortType = '최신순' | '인기순'
+export type Category = string
+export type SortType = string
+export type AuthStatus = 'GUEST' | 'MEMBER' | 'VERIFIED'
 
 export type Post = {
   id: number
-  category: Exclude<Category, '전체'>
+  category: string
   title: string
   content: string
   authorNickname: string
@@ -25,8 +26,9 @@ export type Comment = {
 }
 
 export type User = {
-  id: number
-  nickname: string
-  complexName: string
-  verified: boolean
+  userId: number | null
+  nickname: string | null
+  status: AuthStatus
+  apartmentId: number | null
+  apartmentName: string | null
 }

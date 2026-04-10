@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import type { Post, Category, SortType } from '../types'
 import { mockPosts } from '../data/mockData'
 
@@ -19,10 +19,14 @@ export const usePostStore = create<PostStore>((set) => ({
   setSortType: (sortType) => set({ sortType }),
   toggleLike: (postId) =>
     set((state) => ({
-      posts: state.posts.map((p) =>
-        p.id === postId
-          ? { ...p, liked: !p.liked, likeCount: p.liked ? p.likeCount - 1 : p.likeCount + 1 }
-          : p
+      posts: state.posts.map((post) =>
+        post.id === postId
+          ? {
+              ...post,
+              liked: !post.liked,
+              likeCount: post.liked ? post.likeCount - 1 : post.likeCount + 1,
+            }
+          : post,
       ),
     })),
 }))

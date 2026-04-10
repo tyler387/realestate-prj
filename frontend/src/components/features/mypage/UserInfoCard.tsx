@@ -1,24 +1,34 @@
+﻿import { useNavigate } from 'react-router-dom'
 import { useUserStore } from '../../../stores/userStore'
 
 export const UserInfoCard = () => {
-  const user = useUserStore((s) => s.user)
-
-  if (!user) return null
+  const navigate = useNavigate()
+  const nickname = useUserStore((s) => s.nickname)
+  const status = useUserStore((s) => s.status)
+  const apartmentName = useUserStore((s) => s.apartmentName)
 
   return (
     <div className="bg-white px-4 py-5">
-      <p className="text-base font-bold text-gray-900">{user.nickname}</p>
-      <div className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-        <span>{user.complexName}</span>
-        {user.verified && (
-          <span className="flex items-center gap-0.5 text-blue-500">
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            인증완료
+      <p className="text-lg font-bold text-gray-900">{nickname ?? '이웃'}</p>
+
+      {status === 'VERIFIED' ? (
+        <p className="mt-1 text-sm text-green-500">{apartmentName ?? '아파트'} · 인증완료 ✓</p>
+      ) : (
+        <div>
+          <span className="mt-1 inline-flex rounded-full bg-orange-50 px-2 py-0.5 text-xs text-orange-500">
+            거주지 미인증
           </span>
-        )}
-      </div>
+          <div className="mt-3 rounded-xl bg-blue-50 p-4">
+            <p className="text-sm text-blue-700">🏠 거주지를 인증하면 글쓰기, 댓글이 가능해요</p>
+            <button
+              onClick={() => navigate('/verify')}
+              className="mt-3 rounded-lg bg-blue-500 px-4 py-2 text-sm text-white"
+            >
+              지금 인증하기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,6 +1,6 @@
-import { NavLink, useLocation } from 'react-router-dom'
+﻿import { NavLink, useLocation } from 'react-router-dom'
 
-const HIDDEN_PATHS = ['/post', '/write', '/verify', '/mypage']
+const HIDDEN_PATHS = ['/post', '/write', '/verify', '/mypage', '/trade/search', '/trade/apartment', '/login', '/signup']
 
 const tabs = [
   {
@@ -9,6 +9,15 @@ const tabs = [
     icon: (
       <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+      </svg>
+    ),
+  },
+  {
+    to: '/trade',
+    label: '실거래',
+    icon: (
+      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
     ),
   },
@@ -25,11 +34,12 @@ const tabs = [
 
 export const TabBar = () => {
   const { pathname } = useLocation()
-  const isHidden = HIDDEN_PATHS.some((p) => pathname.startsWith(p))
+  const isHidden = HIDDEN_PATHS.some((path) => pathname.startsWith(path)) || pathname === '/signup/done'
+
   if (isHidden) return null
 
   return (
-    <nav className="flex h-12 w-full shrink-0 border-b border-gray-200 bg-white">
+    <nav className="z-20 flex h-12 w-full shrink-0 border-b border-gray-200 bg-white">
       {tabs.map(({ to, label, icon }) => (
         <NavLink
           key={to}

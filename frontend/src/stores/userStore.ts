@@ -1,15 +1,30 @@
-import { create } from 'zustand'
-import type { User } from '../types'
-import { mockUser } from '../data/mockData'
+﻿import { create } from 'zustand'
+import type { AuthStatus } from '../types'
 
-type UserStore = {
-  user: User | null
-  setUser: (user: User | null) => void
+type UserState = {
+  userId: number | null
+  nickname: string | null
+  status: AuthStatus
+  apartmentId: number | null
+  apartmentName: string | null
+  setUser: (user: Partial<Omit<UserState, 'setUser' | 'logout'>>) => void
   logout: () => void
 }
 
-export const useUserStore = create<UserStore>((set) => ({
-  user: mockUser,
-  setUser: (user) => set({ user }),
-  logout: () => set({ user: null }),
+const initialState = {
+  userId: null,
+  nickname: null,
+  status: 'GUEST' as AuthStatus,
+  apartmentId: null,
+  apartmentName: null,
+}
+
+export const useUserStore = create<UserState>((set) => ({
+  ...initialState,
+  setUser: (user) =>
+    set((state) => ({
+      ...state,
+      ...user,
+    })),
+  logout: () => set(initialState),
 }))

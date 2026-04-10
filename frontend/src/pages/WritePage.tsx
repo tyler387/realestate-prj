@@ -1,14 +1,13 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Category } from '../types'
 import { useUserStore } from '../stores/userStore'
 
-const categories: Exclude<Category, '전체'>[] = ['자유', '질문', '정보', '민원', '거래']
+const categories = ['자유', '질문', '정보', '민원', '거래']
 
 export const WritePage = () => {
   const navigate = useNavigate()
-  const user = useUserStore((s) => s.user)
-  const [category, setCategory] = useState<Exclude<Category, '전체'>>('자유')
+  const apartmentName = useUserStore((s) => s.apartmentName)
+  const [category, setCategory] = useState('자유')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
 
@@ -19,20 +18,18 @@ export const WritePage = () => {
 
   return (
     <div className="flex flex-col pb-6">
-      <div className="bg-blue-50 px-4 py-3 text-sm text-blue-600">
-        {user?.complexName ?? '아파트'} 주민으로 글 작성 중
-      </div>
+      <div className="bg-blue-50 px-4 py-3 text-sm text-blue-600">{apartmentName ?? '아파트'} 주민으로 글 작성 중</div>
 
       <div className="flex gap-2 overflow-x-auto px-4 py-3">
-        {categories.map((cat) => (
+        {categories.map((item) => (
           <button
-            key={cat}
-            onClick={() => setCategory(cat)}
+            key={item}
+            onClick={() => setCategory(item)}
             className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-              category === cat ? 'bg-blue-500 text-white' : 'border border-gray-200 text-gray-500'
+              category === item ? 'bg-blue-500 text-white' : 'border border-gray-200 text-gray-500'
             }`}
           >
-            {cat}
+            {item}
           </button>
         ))}
       </div>
@@ -41,18 +38,16 @@ export const WritePage = () => {
         <div className="relative mb-3">
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value.slice(0, 50))}
+            onChange={(event) => setTitle(event.target.value.slice(0, 50))}
             placeholder="제목 입력"
             className="w-full rounded-lg border border-gray-200 px-3 py-3 text-sm outline-none focus:border-blue-500"
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-            {title.length}/50
-          </span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">{title.length}/50</span>
         </div>
 
         <textarea
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(event) => setContent(event.target.value)}
           placeholder="내용 입력"
           rows={8}
           className="mb-4 w-full resize-none rounded-lg border border-gray-200 px-3 py-3 text-sm outline-none focus:border-blue-500"

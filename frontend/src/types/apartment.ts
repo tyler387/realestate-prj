@@ -7,6 +7,11 @@ export type ApartmentMarker = {
   latestSalePrice: number | null
   latestSaleArea: number | null
   latestTradeDate: string | null
+  latestJeonsePrice?: number | null
+  latestMonthlyDeposit?: number | null
+  latestMonthlyRent?: number | null
+  yearBuilt?: number | null
+  totalHouseholds?: number | null
 }
 
 export type MapBounds = {

@@ -1,4 +1,4 @@
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+﻿type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'primary' | 'secondary'
   fullWidth?: boolean
 }

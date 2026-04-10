@@ -1,4 +1,4 @@
-import type { Comment } from '../../../types'
+﻿import type { Comment } from '../../../types'
 
 export const CommentItem = ({ comment }: { comment: Comment }) => (
   <div className="border-b border-gray-100 px-4 py-3">

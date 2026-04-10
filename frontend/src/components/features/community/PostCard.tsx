@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 import type { Post } from '../../../types'
 import { Badge } from '../../common/Badge'
 
@@ -13,8 +13,8 @@ export const PostCard = ({ post }: { post: Post }) => {
       <div className="mb-1.5">
         <Badge label={post.category} />
       </div>
-      <h3 className="mb-1 text-base font-semibold text-gray-900 line-clamp-1">{post.title}</h3>
-      <p className="mb-3 text-sm text-gray-700 line-clamp-2">{post.content}</p>
+      <h3 className="mb-1 line-clamp-1 text-base font-semibold text-gray-900">{post.title}</h3>
+      <p className="mb-3 line-clamp-2 text-sm text-gray-700">{post.content}</p>
       <div className="flex items-center justify-between text-xs text-gray-400">
         <span>{post.complexName}_익명 · {post.createdAt}</span>
         <div className="flex gap-3">

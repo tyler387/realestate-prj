@@ -1,8 +1,37 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { ApartmentList } from '../components/features/verify/ApartmentList'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { useUserStore } from '../stores/userStore'
+import { useUiStore } from '../stores/uiStore'
 
 export const VerifyPage = () => {
   const [query, setQuery] = useState('')
+  const navigate = useNavigate()
+  const location = useLocation()
+  const setUser = useUserStore((s) => s.setUser)
+  const nickname = useUserStore((s) => s.nickname)
+  const userId = useUserStore((s) => s.userId)
+  const showToast = useUiStore((s) => s.showToast)
+
+  const handleVerify = (apartment: { id: number; name: string }) => {
+    setUser({
+      userId: userId ?? 1,
+      nickname: nickname ?? '익명_7823',
+      status: 'VERIFIED',
+      apartmentId: apartment.id,
+      apartmentName: apartment.name,
+    })
+
+    showToast(`${apartment.name} 인증 완료! ✓`, 'success')
+
+    const fromSignup = (location.state as { from?: string } | null)?.from === '/signup'
+    if (fromSignup) {
+      navigate('/signup/done', { replace: true })
+      return
+    }
+
+    navigate(-1)
+  }
 
   return (
     <div className="flex flex-col pb-6">
@@ -13,13 +42,13 @@ export const VerifyPage = () => {
           </svg>
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(event) => setQuery(event.target.value)}
             placeholder="아파트명 또는 주소 검색"
             className="flex-1 bg-transparent text-sm outline-none"
           />
         </div>
       </div>
-      <ApartmentList query={query} />
+      <ApartmentList query={query} onVerify={handleVerify} />
     </div>
   )
 }

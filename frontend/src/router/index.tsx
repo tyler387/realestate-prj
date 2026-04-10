@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+﻿import { createBrowserRouter } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
 import { CommunityPage } from '../pages/CommunityPage'
 import { MapPage } from '../pages/MapPage'
@@ -6,17 +6,45 @@ import { PostDetailPage } from '../pages/PostDetailPage'
 import { WritePage } from '../pages/WritePage'
 import { VerifyPage } from '../pages/VerifyPage'
 import { MyPage } from '../pages/MyPage'
+import { TradePage } from '../pages/TradePage'
+import { TradeSearchPage } from '../pages/TradeSearchPage'
+import { ApartmentTradePage } from '../pages/ApartmentTradePage'
+import { LoginPage } from '../pages/LoginPage'
+import { SignupPage } from '../pages/SignupPage'
+import { SignupDonePage } from '../pages/SignupDonePage'
+import { MemberRoute } from './MemberRoute'
+import { VerifiedRoute } from './VerifiedRoute'
 
 export const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
       { path: '/', element: <CommunityPage /> },
+      { path: '/trade', element: <TradePage /> },
+      { path: '/trade/search', element: <TradeSearchPage /> },
+      { path: '/trade/apartment/:id', element: <ApartmentTradePage /> },
       { path: '/map', element: <MapPage /> },
       { path: '/post/:id', element: <PostDetailPage /> },
-      { path: '/write', element: <WritePage /> },
+      {
+        path: '/write',
+        element: (
+          <VerifiedRoute>
+            <WritePage />
+          </VerifiedRoute>
+        ),
+      },
       { path: '/verify', element: <VerifyPage /> },
-      { path: '/mypage', element: <MyPage /> },
+      {
+        path: '/mypage',
+        element: (
+          <MemberRoute>
+            <MyPage />
+          </MemberRoute>
+        ),
+      },
+      { path: '/login', element: <LoginPage /> },
+      { path: '/signup', element: <SignupPage /> },
+      { path: '/signup/done', element: <SignupDonePage /> },
     ],
   },
 ])

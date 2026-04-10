@@ -1,12 +1,19 @@
 import { usePostStore } from '../../../stores/postStore'
+import { useUiStore } from '../../../stores/uiStore'
 import { PostCard } from './PostCard'
 import { EmptyState } from '../../common/EmptyState'
 
 export const PostList = () => {
   const { posts, selectedCategory, sortType } = usePostStore()
+  const searchKeyword = useUiStore((s) => s.searchKeyword)
 
   const filtered = posts
     .filter((p) => selectedCategory === '전체' || p.category === selectedCategory)
+    .filter((p) =>
+      searchKeyword
+        ? p.title.includes(searchKeyword) || p.content.includes(searchKeyword)
+        : true
+    )
     .sort((a, b) => sortType === '인기순' ? b.likeCount - a.likeCount : b.id - a.id)
 
   if (filtered.length === 0) return <EmptyState message="게시글이 없습니다" />

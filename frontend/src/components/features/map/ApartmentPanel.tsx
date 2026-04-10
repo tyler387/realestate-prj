@@ -1,22 +1,28 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 import type { ApartmentMarker } from '../../../types'
-import { useUserStore } from '../../../stores/userStore'
 import { mockPosts } from '../../../data/mockData'
 import { formatPrice } from '../../../utils/formatPrice'
+import { useUserStore } from '../../../stores/userStore'
+import { useUiStore } from '../../../stores/uiStore'
 
 export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | null }) => {
   const navigate = useNavigate()
-  const user = useUserStore((s) => s.user)
+  const status = useUserStore((s) => s.status)
+  const openAuthSheet = useUiStore((s) => s.openAuthSheet)
 
   const handleWrite = () => {
-    if (user?.verified) navigate('/write')
-    else navigate('/verify')
+    if (status === 'VERIFIED') {
+      navigate('/write')
+      return
+    }
+
+    openAuthSheet()
   }
 
   if (!apartment) {
     return (
-      <div className="flex min-h-[160px] items-center justify-center border-t border-gray-200 bg-white">
-        <p className="text-sm text-gray-400">지도에서 마커를 클릭하세요</p>
+      <div className="z-10 flex min-h-[160px] items-center justify-center border-t border-gray-200 bg-white">
+        <p className="text-sm text-gray-400">지도에서 마커를 클릭해주세요</p>
       </div>
     )
   }
@@ -24,7 +30,7 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
   const recentPosts = mockPosts.slice(0, 3)
 
   return (
-    <div className="min-h-[200px] border-t border-gray-200 bg-white">
+    <div className="z-10 min-h-[200px] border-t border-gray-200 bg-white">
       <div className="mx-auto my-1.5 h-1 w-10 rounded-full bg-gray-200" />
       <div className="px-4 pb-4 pt-2">
         <div className="mb-1 flex items-start justify-between">
@@ -33,9 +39,7 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
             <p className="text-xs text-gray-400">{apartment.eupMyeonDong}</p>
           </div>
           {apartment.latestSalePrice && (
-            <span className="text-sm font-semibold text-blue-500">
-              {formatPrice(apartment.latestSalePrice)}
-            </span>
+            <span className="text-sm font-semibold text-blue-500">{formatPrice(apartment.latestSalePrice)}</span>
           )}
         </div>
 
@@ -56,7 +60,7 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
             onClick={() => navigate('/')}
             className="flex-1 rounded-lg border border-gray-200 py-2 text-sm text-gray-600 hover:bg-gray-50"
           >
-            더보기
+            둘러보기
           </button>
           <button
             onClick={handleWrite}

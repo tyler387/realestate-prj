@@ -1,4 +1,4 @@
-import type { Post } from '../../../types'
+﻿import type { Post } from '../../../types'
 import { Badge } from '../../common/Badge'
 
 export const PostContent = ({ post }: { post: Post }) => (

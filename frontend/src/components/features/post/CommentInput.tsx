@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 
 export const CommentInput = () => {
   const [value, setValue] = useState('')
@@ -9,11 +9,11 @@ export const CommentInput = () => {
   }
 
   return (
-    <div className="sticky bottom-0 z-40 flex h-14 w-full items-center gap-2 border-t border-gray-200 bg-white px-4">
+    <div className="fixed bottom-0 left-1/2 z-40 flex h-14 w-full max-w-3xl -translate-x-1/2 items-center gap-2 border-t border-gray-200 bg-white px-4">
       <input
         value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="댓글 입력..."
+        onChange={(event) => setValue(event.target.value)}
+        placeholder="댓글을 입력하세요"
         className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm outline-none focus:border-blue-500"
       />
       <button
