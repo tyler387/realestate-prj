@@ -1,200 +1,147 @@
-import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
-import { apartmentApi } from '../api/apartmentApi'
-import type { ApartmentMarker, MapBounds } from '../types/apartment'
-import { formatPrice } from '../utils/formatPrice'
+import { useEffect, useState } from 'react'
+import { useMapFilterStore }   from '../stores/mapFilterStore'
+import { useMapMarkers }       from '../hooks/useMapMarkers'
+import { useDebounce }         from '../hooks/useDebounce'
+import { USE_KAKAO_MAP }       from '../config/featureFlags'
+import { FilterPanel }         from './features/map/FilterPanel'
+import { ZoomControl }         from './features/map/ZoomControl'
+import { EmptyMarkerOverlay }  from './features/map/EmptyMarkerOverlay'
+import { MockMapView }         from './features/map/MockMapView'
+import { ApartmentPanel }      from './features/map/ApartmentPanel'
+import type { MapMarkerItem }  from '../types/map'
+import type { ApartmentMarker } from '../types'
 
-type MapViewProps = {
-  onMapReady: (map: any | null) => void
-}
+// MapMarkerItem → ApartmentMarker 변환 (ApartmentPanel 재사용용)
+const toApartmentMarker = (item: MapMarkerItem): ApartmentMarker => ({
+  id:                item.aptId as unknown as number,
+  complexName:       item.aptName,
+  eupMyeonDong:      '',
+  latitude:          item.lat,
+  longitude:         item.lng,
+  latestSalePrice:   item.price,
+  latestSaleArea:    null,
+  latestTradeDate:   null,
+})
 
-const escapeHtml = (text: string): string =>
-  text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
+export const MapView = () => {
+  const filters = useMapFilterStore()
 
-export const MapView = ({ onMapReady }: MapViewProps) => {
-  const mapContainerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<any | null>(null)
-  const markersRef = useRef<any[]>([])
-  const infoWindowsRef = useRef<any[]>([])
-  const openedInfoWindowRef = useRef<any | null>(null)
-  const idleTimerRef = useRef<number | null>(null)
-  const [bounds, setBounds] = useState<MapBounds | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  // 객체 참조 문제 회피 — 개별 값 debounce
+  const debouncedDealType  = useDebounce(filters.dealType,  300)
+  const debouncedMinPrice  = useDebounce(filters.minPrice,  300)
+  const debouncedMaxPrice  = useDebounce(filters.maxPrice,  300)
+  const debouncedAreaRange = useDebounce(filters.areaRange, 300)
 
-  const kakaoMapKey = (import.meta.env.VITE_KAKAO_MAP_KEY ?? '').trim()
-  const isPlaceholderKey =
-    !kakaoMapKey ||
-    kakaoMapKey === 'YOUR_APP_KEY' ||
-    kakaoMapKey === 'YOUR_JAVASCRIPT_KEY'
+  const debouncedFilters = {
+    dealType:  debouncedDealType,
+    minPrice:  debouncedMinPrice,
+    maxPrice:  debouncedMaxPrice,
+    areaRange: debouncedAreaRange,
+  }
 
-  const { data: apartments = [], isFetching, isError, error } = useQuery({
-    queryKey: ['markers', bounds],
-    queryFn: () => apartmentApi.getMarkers(bounds as MapBounds),
-    staleTime: 60000,
-    enabled: bounds !== null,
-    retry: 1,
-    refetchOnWindowFocus: false,
+  const [selectedApt, setSelectedApt] = useState<MapMarkerItem | null>(null)
+  const [isEmpty]                     = useState(false)
+  const [loadError,   setLoadError]   = useState<string | null>(null)
+
+  const { mapContainerRef, mapInstanceRef, fetchMarkers } = useMapMarkers({
+    filters:       debouncedFilters,
+    onMarkerClick: (apt) => setSelectedApt(apt),
   })
 
+  // ── SDK 로드 & 지도 초기화 ────────────────────────────────────
   useEffect(() => {
-    const container = mapContainerRef.current
-    let isMounted = true
+    if (!USE_KAKAO_MAP) return
 
-    if (!container) {
-      return
-    }
+    const container = mapContainerRef.current
+    let isMounted   = true
+
+    if (!container) return
+
+    const kakaoMapKey      = (import.meta.env.VITE_KAKAO_MAP_KEY ?? '').trim()
+    const isPlaceholderKey = !kakaoMapKey || kakaoMapKey === 'YOUR_APP_KEY'
 
     if (isPlaceholderKey) {
-      setLoadError('Kakao map key is missing. Check VITE_KAKAO_MAP_KEY in root .env.')
+      setLoadError('Kakao map key가 없습니다. 루트 .env의 VITE_KAKAO_MAP_KEY를 확인하세요.')
       return
     }
 
-    const loadKakaoMapSdk = async () => {
-      if (window.kakao?.maps?.load) {
-        return
-      }
+    const loadSdk = async () => {
+      if (window.kakao?.maps?.load) return
 
       await new Promise<void>((resolve, reject) => {
-        const existing = document.querySelector<HTMLScriptElement>('script[data-kakao-maps-sdk="true"]')
+        const existing = document.querySelector<HTMLScriptElement>(
+          'script[data-kakao-maps-sdk="true"]'
+        )
         if (existing) {
-          if (existing.dataset.loaded === 'true') {
-            resolve()
-            return
-          }
-          existing.addEventListener('load', () => resolve(), { once: true })
+          if (existing.dataset.loaded === 'true') { resolve(); return }
+          existing.addEventListener('load',  () => resolve(),                            { once: true })
           existing.addEventListener('error', () => reject(new Error('SDK load failed')), { once: true })
           return
         }
-
-        const script = document.createElement('script')
+        const script       = document.createElement('script')
         script.dataset.kakaoMapsSdk = 'true'
         script.async = true
-        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoMapKey}&autoload=false&libraries=services`
-        script.onload = () => {
-          script.dataset.loaded = 'true'
-          resolve()
-        }
+        script.src   = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoMapKey}&autoload=false&libraries=services,clusterer`
+        script.onload  = () => { script.dataset.loaded = 'true'; resolve() }
         script.onerror = () => reject(new Error('SDK load failed'))
         document.head.appendChild(script)
       })
     }
 
-    const updateBounds = (map: any) => {
-      const mapBounds = map.getBounds()
-      const sw = mapBounds.getSouthWest()
-      const ne = mapBounds.getNorthEast()
-
-      setBounds({
-        swLng: sw.getLng(),
-        swLat: sw.getLat(),
-        neLng: ne.getLng(),
-        neLat: ne.getLat(),
-      })
-    }
-
-    loadKakaoMapSdk()
+    loadSdk()
       .then(() => {
-        if (!isMounted || !window.kakao?.maps?.load) {
-          return
-        }
+        if (!isMounted || !window.kakao?.maps?.load) return
 
         window.kakao.maps.load(() => {
-          if (!isMounted || !window.kakao?.maps) {
-            return
-          }
+          if (!isMounted || !window.kakao?.maps) return
+          if (mapInstanceRef.current) return  // 이미 초기화됨
 
           setLoadError(null)
-          const center = new window.kakao.maps.LatLng(37.5665, 126.978)
-          const map = new window.kakao.maps.Map(container, {
-            center,
-            level: 7,
+
+          mapInstanceRef.current = new window.kakao.maps.Map(container, {
+            center: new window.kakao.maps.LatLng(37.5665, 126.9780),
+            level:  5,  // 기본 줌 레벨 (호갱노노 기준 적정값)
           })
 
-          mapRef.current = map
-          onMapReady(map)
-          updateBounds(map)
-
-          window.kakao.maps.event.addListener(map, 'idle', () => {
-            if (idleTimerRef.current) {
-              window.clearTimeout(idleTimerRef.current)
-            }
-
-            idleTimerRef.current = window.setTimeout(() => {
-              updateBounds(map)
-            }, 400)
+          // idle 이벤트 → throttle 500ms 마커 갱신
+          window.kakao.maps.event.addListener(mapInstanceRef.current, 'idle', () => {
+            fetchMarkers()
           })
 
-          window.kakao.maps.event.addListener(map, 'click', () => {
-            if (openedInfoWindowRef.current) {
-              openedInfoWindowRef.current.close()
-              openedInfoWindowRef.current = null
-            }
-          })
+          fetchMarkers()
         })
       })
       .catch(() => {
-        if (isMounted) {
-          setLoadError(`Failed to load Kakao Maps SDK. Current origin: ${window.location.origin}`)
-        }
+        if (isMounted) setLoadError('Kakao Maps SDK 로드 실패')
       })
 
     return () => {
       isMounted = false
-      if (idleTimerRef.current) {
-        window.clearTimeout(idleTimerRef.current)
-      }
-      onMapReady(null)
     }
-  }, [isPlaceholderKey, kakaoMapKey, onMapReady])
+  }, [])   // 마운트 1회
 
+  // ── 필터 변경 → 마커 갱신 ─────────────────────────────────────
   useEffect(() => {
-    const map = mapRef.current
-    if (!map || !window.kakao?.maps) {
-      return
-    }
-
-    markersRef.current.forEach((marker) => marker.setMap(null))
-    markersRef.current = []
-    infoWindowsRef.current = []
-    openedInfoWindowRef.current = null
-
-    apartments.forEach((apartment: ApartmentMarker) => {
-      const marker = new window.kakao.maps.Marker({
-        map,
-        position: new window.kakao.maps.LatLng(apartment.latitude, apartment.longitude),
+    if (!mapInstanceRef.current) return
+    fetchMarkers()
+      .catch(() => {})
+      .finally(() => {
+        // 빈 결과 감지는 useMapMarkers 내부에서 clearMarkers 호출 후 상태로 반영
+        // markers ref가 비면 isEmpty=true (단순 판단)
       })
+  }, [debouncedDealType, debouncedMinPrice, debouncedMaxPrice, debouncedAreaRange])
 
-      const priceText =
-        apartment.latestSalePrice === null
-          ? 'No recent sale price'
-          : `Latest sale ${formatPrice(apartment.latestSalePrice)}`
-
-      const infoWindow = new window.kakao.maps.InfoWindow({
-        content: `
-          <div style="padding:8px 10px; font-size:12px; line-height:1.4; white-space:nowrap;">
-            <div style="font-weight:700; margin-bottom:2px;">${escapeHtml(apartment.complexName)}</div>
-            <div>${escapeHtml(priceText)}</div>
-          </div>
-        `,
-      })
-
-      window.kakao.maps.event.addListener(marker, 'click', () => {
-        if (openedInfoWindowRef.current) {
-          openedInfoWindowRef.current.close()
-        }
-        infoWindow.open(map, marker)
-        openedInfoWindowRef.current = infoWindow
-      })
-
-      markersRef.current.push(marker)
-      infoWindowsRef.current.push(infoWindow)
-    })
-  }, [apartments])
+  // mock 모드
+  if (!USE_KAKAO_MAP) {
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="relative flex-1 overflow-hidden">
+          <MockMapView />
+        </div>
+        <ApartmentPanel apartment={null} />
+      </div>
+    )
+  }
 
   if (loadError) {
     return (
@@ -205,18 +152,25 @@ export const MapView = ({ onMapReady }: MapViewProps) => {
   }
 
   return (
-    <div className="relative h-full w-full">
-      {isFetching && !isError && (
-        <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-md bg-white/90 px-3 py-1 text-xs shadow">
-          Loading map data...
-        </div>
-      )}
-      {isError && (
-        <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-md bg-red-50 px-3 py-1 text-xs text-red-700 shadow">
-          Failed to load markers: {(error as Error)?.message ?? 'Check backend at http://localhost:8081'}
-        </div>
-      )}
-      <div ref={mapContainerRef} className="h-full w-full" />
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="relative flex-1 overflow-hidden">
+        {/* FilterPanel — 지도 위 absolute */}
+        <FilterPanel />
+
+        {/* 카카오맵 컨테이너 */}
+        <div ref={mapContainerRef} className="w-full h-full" />
+
+        {/* 빈 결과 오버레이 */}
+        {isEmpty && <EmptyMarkerOverlay />}
+
+        {/* 작은 커스텀 줌 컨트롤 */}
+        <ZoomControl mapInstanceRef={mapInstanceRef} />
+      </div>
+
+      {/* 마커 클릭 시 하단 패널 */}
+      <ApartmentPanel
+        apartment={selectedApt ? toApartmentMarker(selectedApt) : null}
+      />
     </div>
   )
 }

@@ -20,3 +20,11 @@ export type MapBounds = {
   neLng: number
   neLat: number
 }
+
+export type Apartment = {
+  aptId: string
+  aptName: string
+  address: string
+  lat: number
+  lng: number
+}

@@ -1,4 +1,4 @@
-﻿export type { ApartmentMarker, MapBounds } from './apartment'
+﻿export type { ApartmentMarker, MapBounds, Apartment } from './apartment'
 
 export type Category = string
 export type SortType = string
