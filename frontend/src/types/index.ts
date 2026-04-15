@@ -6,6 +6,7 @@ export type AuthStatus = 'GUEST' | 'MEMBER' | 'VERIFIED'
 
 export type Post = {
   id: number
+  aptId?: number
   category: string
   title: string
   content: string

@@ -21,7 +21,8 @@ export const AppLayout = () => {
   const closeAuthSheet = useUiStore((s) => s.closeAuthSheet)
 
   const canOpenAuthSheet = status === 'GUEST' || status === 'MEMBER'
-  const aptId = String(apartmentId ?? 'apt-001')
+  // 아파트 미선택 시 빈 문자열 → 사이드바 훅 enabled:false 처리
+  const aptId = apartmentId != null ? String(apartmentId) : ''
 
   // 커뮤니티 사이드바
   const showCommLeft  = pathname === '/'

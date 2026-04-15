@@ -20,12 +20,16 @@ const PAGE_TITLES: Record<string, string> = {
 export const Header = () => {
   const navigate = useNavigate()
   const { pathname, state } = useLocation()
-  const status = useUserStore((s) => s.status)
+  const status        = useUserStore((s) => s.status)
+  const apartmentName = useUserStore((s) => s.apartmentName)
 
   const isBackPattern = BACK_BUTTON_PATHS.some((path) => pathname.startsWith(path)) && pathname !== '/signup/done'
-  const isAuthPage = AUTH_PAGE_PATHS.some((path) => pathname.startsWith(path))
+  const isAuthPage    = AUTH_PAGE_PATHS.some((path) => pathname.startsWith(path))
 
   let title = PAGE_TITLES[pathname] ?? ''
+  if (pathname === '/') {
+    title = apartmentName ? `${apartmentName} 커뮤니티` : '커뮤니티'
+  }
   if (pathname.startsWith('/post')) title = '게시글'
   if (pathname.startsWith('/trade/apartment/')) {
     title = (state as { apartmentName?: string } | null)?.apartmentName ?? '아파트 상세'
