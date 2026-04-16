@@ -27,6 +27,7 @@ export const useApartmentSummary = (aptId: string) =>
           households: data.totalHouseholdCount ?? 0,
           builtYear: data.completionYear ?? 0,
           recentPrice: data.recentSalePrice ?? 0,
+          recentSaleArea: data.recentSaleArea ?? null,
         })),
     enabled: !!aptId,
     staleTime: 1000 * 60 * 60,

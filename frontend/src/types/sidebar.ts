@@ -5,6 +5,7 @@ export type ApartmentSummary = {
   households: number
   builtYear: number
   recentPrice: number
+  recentSaleArea: number | null
 }
 
 export type PopularPost = {
