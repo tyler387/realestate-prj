@@ -3,9 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import { RecentSearchList } from '../components/features/trade/RecentSearchList'
 import { ApartmentSearchItem } from '../components/features/trade/ApartmentSearchItem'
 import { EmptyState } from '../components/common/EmptyState'
-import { mockApartments, type Apartment } from '../data/mockTradeData'
+import { useDebounce } from '../hooks/useDebounce'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
 const STORAGE_KEY = 'recentTradeSearch'
+
+type ApartmentResult = {
+  id: number
+  complexName: string
+  roadAddress: string
+  sigungu: string
+  eupMyeonDong: string
+  latitude: number
+  longitude: number
+}
 
 const loadRecent = (): string[] => {
   try {
@@ -23,17 +34,28 @@ export const TradeSearchPage = () => {
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
+  const [results, setResults] = useState<ApartmentResult[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const [recentSearches, setRecentSearches] = useState<string[]>(loadRecent)
+
+  const debouncedQuery = useDebounce(query, 300)
 
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
 
-  const results: Apartment[] = query
-    ? mockApartments.filter((a) =>
-        a.apartmentName.includes(query) || a.address.includes(query)
-      )
-    : []
+  useEffect(() => {
+    if (!debouncedQuery.trim()) {
+      setResults([])
+      return
+    }
+    setIsLoading(true)
+    fetch(`${API_BASE_URL}/api/v1/apartments/search?keyword=${encodeURIComponent(debouncedQuery)}`)
+      .then((res) => res.json())
+      .then((data: ApartmentResult[]) => setResults(data))
+      .catch(() => setResults([]))
+      .finally(() => setIsLoading(false))
+  }, [debouncedQuery])
 
   const addRecent = (term: string) => {
     const next = [term, ...recentSearches.filter((t) => t !== term)].slice(0, 5)
@@ -52,9 +74,9 @@ export const TradeSearchPage = () => {
     saveRecent([])
   }
 
-  const handleSelect = (apartment: Apartment) => {
-    addRecent(apartment.apartmentName)
-    navigate(`/trade/apartment/${apartment.apartmentId}`, { state: { apartmentName: apartment.apartmentName } })
+  const handleSelect = (apt: ApartmentResult) => {
+    addRecent(apt.complexName)
+    navigate(`/trade/apartment/${apt.id}`, { state: { apartmentName: apt.complexName } })
   }
 
   return (
@@ -90,16 +112,24 @@ export const TradeSearchPage = () => {
         />
       )}
 
-      {query !== '' && results.length > 0 && (
+      {query !== '' && isLoading && (
+        <p className="px-4 py-4 text-sm text-gray-400">검색 중...</p>
+      )}
+
+      {query !== '' && !isLoading && results.length > 0 && (
         <div>
           <p className="px-4 py-2 text-xs text-gray-400">검색 결과 {results.length}개</p>
-          {results.map((a) => (
-            <ApartmentSearchItem key={a.apartmentId} apartment={a} onSelect={handleSelect} />
+          {results.map((apt) => (
+            <ApartmentSearchItem
+              key={apt.id}
+              apartment={{ apartmentId: apt.id, apartmentName: apt.complexName, address: apt.roadAddress ?? `${apt.sigungu} ${apt.eupMyeonDong}`, latestPrice: 0 }}
+              onSelect={() => handleSelect(apt)}
+            />
           ))}
         </div>
       )}
 
-      {query !== '' && results.length === 0 && (
+      {query !== '' && !isLoading && results.length === 0 && (
         <EmptyState icon="🔍" title="검색 결과가 없어요" />
       )}
     </div>

@@ -103,18 +103,34 @@ export const useMapMarkers = ({ filters, onMarkerClick }: UseMapMarkersParams) =
     const bounds = getBounds()
     if (!mapInstanceRef.current || !bounds) return
 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
     const zoomLevel = mapInstanceRef.current.getLevel()
     const params    = buildParams(bounds, filtersRef.current, zoomLevel)
 
     try {
-      const res  = await fetch(`/api/map/apartments?${params}`)
-      const data = await res.json()
-      if (data.success) {
-        if (data.data.length === 0) {
-          clearMarkers()
-        } else {
-          renderMarkers(data.data)
-        }
+      const res  = await fetch(`${API_BASE_URL}/api/v1/apartments/markers?${params}`)
+      if (!res.ok) return
+      const data: Array<{
+        id: number
+        complexName: string
+        eupMyeonDong: string
+        latitude: number
+        longitude: number
+        latestSalePrice: number | null
+      }> = await res.json()
+
+      if (data.length === 0) {
+        clearMarkers()
+      } else {
+        renderMarkers(
+          data.map((d) => ({
+            aptId:   String(d.id),
+            aptName: d.complexName,
+            lat:     d.latitude,
+            lng:     d.longitude,
+            price:   d.latestSalePrice ?? 0,
+          }))
+        )
       }
     } catch {
       // API 실패 시 기존 마커 유지

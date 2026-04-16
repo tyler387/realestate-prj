@@ -1,19 +1,47 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useUserStore } from '../stores/userStore'
+import { createPost } from '../services/communityService'
 
 const categories = ['자유', '질문', '정보', '민원', '거래']
 
 export const WritePage = () => {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const apartmentId = useUserStore((s) => s.apartmentId)
   const apartmentName = useUserStore((s) => s.apartmentName)
+  const nickname = useUserStore((s) => s.nickname)
+
   const [category, setCategory] = useState('자유')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const handleSubmit = () => {
-    if (!title.trim() || !content.trim()) return
-    navigate('/')
+  const handleSubmit = async () => {
+    if (!title.trim() || !content.trim() || apartmentId == null || isSubmitting) return
+
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      await createPost({
+        aptId: apartmentId,
+        category,
+        title: title.trim(),
+        content: content.trim(),
+        authorNickname: nickname ?? '익명',
+        complexName: apartmentName ?? '아파트',
+      })
+      await queryClient.invalidateQueries({ queryKey: ['community', 'posts'] })
+      navigate('/')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '게시글 등록에 실패했습니다.'
+      setSubmitError(message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -53,12 +81,14 @@ export const WritePage = () => {
           className="mb-4 w-full resize-none rounded-lg border border-gray-200 px-3 py-3 text-sm outline-none focus:border-blue-500"
         />
 
+        {submitError && <p className="mb-3 text-sm text-red-500">{submitError}</p>}
+
         <button
           onClick={handleSubmit}
-          disabled={!title.trim() || !content.trim()}
+          disabled={!title.trim() || !content.trim() || apartmentId == null || isSubmitting}
           className="w-full rounded-lg bg-blue-500 py-3 text-sm font-medium text-white disabled:opacity-40 hover:bg-blue-600"
         >
-          등록하기
+          {isSubmitting ? '등록 중...' : '등록하기'}
         </button>
       </div>
     </div>

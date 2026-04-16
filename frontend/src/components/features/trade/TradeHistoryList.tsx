@@ -1,4 +1,4 @@
-import { type TradeRecord } from '../../../data/mockTradeData'
+import { type TradeRecord } from '../../../types/trade'
 import { type TradeType } from './TradeTypeFilter'
 import { useTradeFilterStore } from '../../../stores/tradeFilterStore'
 import { TradeHistoryItem } from './TradeHistoryItem'

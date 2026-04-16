@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useTradeFilterStore } from '../../../stores/tradeFilterStore'
 import { usePriceTrend } from '../../../hooks/useTradeSidebarData'
 import { formatPrice } from '../../../utils/formatPrice'
 import { SidebarCard, CardTitle } from '../sidebar/SidebarCard'
@@ -9,8 +8,7 @@ import { ChangeRateBadge } from './ChangeRateBadge'
 
 export const PriceTrendSummary = () => {
   const [period, setPeriod] = useState<'1w' | '1m'>('1w')
-  const { regionId, subRegionId } = useTradeFilterStore()
-  const { data, isLoading, isError } = usePriceTrend(regionId, subRegionId, period)
+  const { data, isLoading, isError } = usePriceTrend(period)
 
   return (
     <SidebarCard>

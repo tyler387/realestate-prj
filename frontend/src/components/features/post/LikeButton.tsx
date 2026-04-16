@@ -1,22 +1,20 @@
-﻿import type { Post } from '../../../types'
-import { usePostStore } from '../../../stores/postStore'
+import type { Post } from '../../../types'
 
 type LikeButtonProps = {
   post: Post
   disabled?: boolean
   onDisabledClick?: () => void
+  onToggle?: () => void
 }
 
-export const LikeButton = ({ post, disabled = false, onDisabledClick }: LikeButtonProps) => {
-  const toggleLike = usePostStore((s) => s.toggleLike)
-
+export const LikeButton = ({ post, disabled = false, onDisabledClick, onToggle }: LikeButtonProps) => {
   const handleClick = () => {
     if (disabled) {
       onDisabledClick?.()
       return
     }
 
-    toggleLike(post.id)
+    onToggle?.()
   }
 
   return (

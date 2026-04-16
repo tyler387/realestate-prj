@@ -1,9 +1,9 @@
-import { type TradeRanking } from '../../../data/mockTradeData'
+import { type TopApartment } from '../../../types/trade'
 import { TradeRankingCard } from './TradeRankingCard'
 import { TradeRankingCardSkeleton } from './TradeRankingCardSkeleton'
 
 type Props = {
-  rankings: TradeRanking[]
+  rankings: TopApartment[]
   isLoading: boolean
 }
 
@@ -20,8 +20,8 @@ export const TradeRankingList = ({ rankings, isLoading }: Props) => {
 
   return (
     <div>
-      {rankings.slice(0, 20).map((r) => (
-        <TradeRankingCard key={r.apartmentId} ranking={r} />
+      {rankings.map((r) => (
+        <TradeRankingCard key={r.aptId} ranking={r} />
       ))}
     </div>
   )

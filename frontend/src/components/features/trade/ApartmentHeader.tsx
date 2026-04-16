@@ -1,4 +1,4 @@
-﻿import { type Apartment } from '../../../data/mockTradeData'
+﻿import { type TradeApartment as Apartment } from '../../../types/trade'
 import { formatPrice } from '../../../utils/formatPrice'
 
 type Props = {

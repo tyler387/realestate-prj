@@ -2,11 +2,8 @@ import { useEffect, useState } from 'react'
 import { useMapFilterStore }   from '../stores/mapFilterStore'
 import { useMapMarkers }       from '../hooks/useMapMarkers'
 import { useDebounce }         from '../hooks/useDebounce'
-import { USE_KAKAO_MAP }       from '../config/featureFlags'
 import { FilterPanel }         from './features/map/FilterPanel'
 import { ZoomControl }         from './features/map/ZoomControl'
-import { EmptyMarkerOverlay }  from './features/map/EmptyMarkerOverlay'
-import { MockMapView }         from './features/map/MockMapView'
 import { ApartmentPanel }      from './features/map/ApartmentPanel'
 import type { MapMarkerItem }  from '../types/map'
 import type { ApartmentMarker } from '../types'
@@ -40,7 +37,6 @@ export const MapView = () => {
   }
 
   const [selectedApt, setSelectedApt] = useState<MapMarkerItem | null>(null)
-  const [isEmpty]                     = useState(false)
   const [loadError,   setLoadError]   = useState<string | null>(null)
 
   const { mapContainerRef, mapInstanceRef, fetchMarkers } = useMapMarkers({
@@ -50,8 +46,6 @@ export const MapView = () => {
 
   // ── SDK 로드 & 지도 초기화 ────────────────────────────────────
   useEffect(() => {
-    if (!USE_KAKAO_MAP) return
-
     const container = mapContainerRef.current
     let isMounted   = true
 
@@ -123,25 +117,8 @@ export const MapView = () => {
   // ── 필터 변경 → 마커 갱신 ─────────────────────────────────────
   useEffect(() => {
     if (!mapInstanceRef.current) return
-    fetchMarkers()
-      .catch(() => {})
-      .finally(() => {
-        // 빈 결과 감지는 useMapMarkers 내부에서 clearMarkers 호출 후 상태로 반영
-        // markers ref가 비면 isEmpty=true (단순 판단)
-      })
+    fetchMarkers().catch(() => {})
   }, [debouncedDealType, debouncedMinPrice, debouncedMaxPrice, debouncedAreaRange])
-
-  // mock 모드
-  if (!USE_KAKAO_MAP) {
-    return (
-      <div className="flex h-full flex-col overflow-hidden">
-        <div className="relative flex-1 overflow-hidden">
-          <MockMapView />
-        </div>
-        <ApartmentPanel apartment={null} />
-      </div>
-    )
-  }
 
   if (loadError) {
     return (
@@ -159,9 +136,6 @@ export const MapView = () => {
 
         {/* 카카오맵 컨테이너 */}
         <div ref={mapContainerRef} className="w-full h-full" />
-
-        {/* 빈 결과 오버레이 */}
-        {isEmpty && <EmptyMarkerOverlay />}
 
         {/* 작은 커스텀 줌 컨트롤 */}
         <ZoomControl mapInstanceRef={mapInstanceRef} />

@@ -1,48 +1,62 @@
 import { useQuery } from '@tanstack/react-query'
-import {
-  mockPriceTrend,
-  mockHighestPriceDeals,
-  mockTopTransactionApartments,
-  type PriceTrendData,
-  type HighestPriceDeal,
-  type TopTransactionApartment,
-} from '../data/mockTradeSidebarData'
+import type {
+  PriceTrendData,
+  HighestPriceDeal,
+  TopTransactionApartment,
+} from '../types/sidebar'
 
-const USE_MOCK = true
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
 
-export const usePriceTrend = (
-  regionId: string,
-  subRegionId: string | null,
-  period: '1w' | '1m',
-) =>
+export const usePriceTrend = (period: '1w' | '1m') =>
   useQuery<PriceTrendData>({
-    queryKey: ['trade', 'priceTrend', regionId, subRegionId, period],
+    queryKey: ['trade', 'priceTrend', period],
     queryFn: () =>
-      fetch(`/api/transactions/trend?regionId=${regionId}&period=${period}`).then((r) => r.json()),
-    enabled: !USE_MOCK,
-    placeholderData: USE_MOCK ? mockPriceTrend[period] : undefined,
+      fetch(`${API_BASE_URL}/api/v1/trades/trend?period=${period}`)
+        .then((r) => r.json())
+        .then((data) => ({
+          period: data.period as '1w' | '1m',
+          avgPrice: data.avgPrice ?? 0,
+          changeRate: data.changeRate ?? 0,
+          transactionCount: data.transactionCount ?? 0,
+        })),
     staleTime: 1000 * 60 * 5,
-    gcTime:    1000 * 60 * 10,
+    gcTime: 1000 * 60 * 10,
   })
 
-export const useHighestPriceDeals = (regionId: string, subRegionId: string | null) =>
+export const useHighestPriceDeals = () =>
   useQuery<HighestPriceDeal[]>({
-    queryKey: ['trade', 'highestDeals', regionId, subRegionId],
+    queryKey: ['trade', 'highestDeals'],
     queryFn: () =>
-      fetch(`/api/transactions/highest?regionId=${regionId}`).then((r) => r.json()),
-    enabled: !USE_MOCK,
-    placeholderData: USE_MOCK ? mockHighestPriceDeals : undefined,
+      fetch(`${API_BASE_URL}/api/v1/trades/highest`)
+        .then((r) => r.json())
+        .then((data: Array<{ aptId: number; aptName: string; price: number; dealDate: string; area: number; isNewHigh: boolean }>) =>
+          data.map((d) => ({
+            aptId: String(d.aptId),
+            aptName: d.aptName,
+            price: d.price,
+            dealDate: d.dealDate,
+            area: d.area,
+            isNewHigh: d.isNewHigh,
+          }))
+        ),
     staleTime: 1000 * 60 * 5,
-    gcTime:    1000 * 60 * 10,
+    gcTime: 1000 * 60 * 10,
   })
 
-export const useTopTransactionApartments = (regionId: string, subRegionId: string | null) =>
+export const useTopTransactionApartments = () =>
   useQuery<TopTransactionApartment[]>({
-    queryKey: ['trade', 'topApartments', regionId, subRegionId],
+    queryKey: ['trade', 'topApartments'],
     queryFn: () =>
-      fetch(`/api/transactions/top-apartments?regionId=${regionId}`).then((r) => r.json()),
-    enabled: !USE_MOCK,
-    placeholderData: USE_MOCK ? mockTopTransactionApartments : undefined,
+      fetch(`${API_BASE_URL}/api/v1/trades/top-apartments`)
+        .then((r) => r.json())
+        .then((data: Array<{ rank: number; aptId: number; aptName: string; transactionCount: number }>) =>
+          data.map((d) => ({
+            rank: d.rank,
+            aptId: String(d.aptId),
+            aptName: d.aptName,
+            transactionCount: d.transactionCount,
+          }))
+        ),
     staleTime: 1000 * 60 * 5,
-    gcTime:    1000 * 60 * 10,
+    gcTime: 1000 * 60 * 10,
   })

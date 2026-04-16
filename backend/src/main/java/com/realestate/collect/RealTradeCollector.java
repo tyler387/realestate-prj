@@ -46,6 +46,34 @@ public class RealTradeCollector {
     @Value("${external.kakao.rest-api-key}")
     private String kakaoRestApiKey;
 
+    /** 지원되는 lawd_cd 목록 (새 지역 추가 시 여기에도 추가) */
+    private static final Map<String, CollectTarget> SUPPORTED_DISTRICTS = Map.of(
+        "11650", new CollectTarget("11650", SEOUL, "\uC11C\uCD08\uAD6C"),
+        "11710", new CollectTarget("11710", SEOUL, "\uC1A1\uD30C\uAD6C"),
+        "11680", new CollectTarget("11680", SEOUL, "\uAC15\uB0A8\uAD6C"),
+        "11440", new CollectTarget("11440", SEOUL, "\uB9C8\uD3EC\uAD6C"),
+        "41111", new CollectTarget("41111", "\uACBD\uAE30\uB3C4", "\uC218\uC6D0\uC2DC \uC7A5\uC548\uAD6C")
+    );
+
+    public Map<String, Integer> collectDistrict(String lawdCd, int months) {
+        CollectTarget target = SUPPORTED_DISTRICTS.get(lawdCd);
+        if (target == null) {
+            throw new IllegalArgumentException("Unsupported lawdCd: " + lawdCd);
+        }
+        Map<String, Integer> stats = new HashMap<>();
+        stats.put("savedApartments", 0);
+        stats.put("savedTrades", 0);
+        stats.put("skippedNoCoordinate", 0);
+        stats.put("duplicateTrades", 0);
+
+        YearMonth currentMonth = YearMonth.now();
+        for (int offset = 0; offset < months; offset++) {
+            String dealYmd = currentMonth.minusMonths(offset).format(DEAL_YMD_FORMATTER);
+            collectMonthByDistrict(target.lawdCd(), target.sido(), target.sigungu(), dealYmd, stats);
+        }
+        return stats;
+    }
+
     public Map<String, Integer> collectRecentThreeMonths() {
         Map<String, Integer> stats = new HashMap<>();
         stats.put("savedApartments", 0);
@@ -55,6 +83,7 @@ public class RealTradeCollector {
 
         List<CollectTarget> targets = List.of(
                 new CollectTarget("11650", SEOUL, "\uC11C\uCD08\uAD6C"),
+                new CollectTarget("11710", SEOUL, "\uC1A1\uD30C\uAD6C"),
                 new CollectTarget("11680", SEOUL, "\uAC15\uB0A8\uAD6C"),
                 new CollectTarget("11440", SEOUL, "\uB9C8\uD3EC\uAD6C"),
                 new CollectTarget("41111", "\uACBD\uAE30\uB3C4", "\uC218\uC6D0\uC2DC \uC7A5\uC548\uAD6C")

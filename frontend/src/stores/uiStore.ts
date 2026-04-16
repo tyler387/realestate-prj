@@ -11,8 +11,8 @@ type ToastState = {
 type UiStore = {
   selectedApartmentId:    number | null
   setSelectedApartmentId: (id: number | null) => void
-  tradePeriod:            '1d' | '1w' | '1m'
-  setTradePeriod:         (p: '1d' | '1w' | '1m') => void
+  tradePeriod:            '1w' | '1m'
+  setTradePeriod:         (p: '1w' | '1m') => void
   searchKeyword:          string | null
   setSearchKeyword:       (kw: string | null) => void
   isAuthSheetOpen:        boolean
@@ -27,7 +27,7 @@ type UiStore = {
 export const useUiStore = create<UiStore>((set) => ({
   selectedApartmentId:    null,
   setSelectedApartmentId: (selectedApartmentId) => set({ selectedApartmentId }),
-  tradePeriod:            '1m',
+  tradePeriod:            '1m' as const,
   setTradePeriod:         (tradePeriod) => set({ tradePeriod }),
   searchKeyword:          null,
   setSearchKeyword:       (searchKeyword) => set({ searchKeyword }),

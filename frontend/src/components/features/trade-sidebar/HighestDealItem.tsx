@@ -1,4 +1,4 @@
-import { type HighestPriceDeal } from '../../../data/mockTradeSidebarData'
+import { type HighestPriceDeal } from '../../../types/sidebar'
 import { formatPrice } from '../../../utils/formatPrice'
 
 type Props = {

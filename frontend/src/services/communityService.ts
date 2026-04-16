@@ -1,49 +1,47 @@
-import { USE_MOCK_POSTS } from '../config/featureFlags'
-import { mockPosts }      from '../data/mockData'
-import type { Post }      from '../types'
+import type { Post } from '../types'
 
-const fetchPostsMock = (
-  aptId:    number,
-  category: string,
-  sortType: string
-): Post[] => {
-  // aptId 기준 필터링 (aptId 필드 없는 구 데이터는 제외)
-  let posts = mockPosts.filter(p => p.aptId === aptId)
+type CreatePostParams = {
+  aptId: number
+  category: string
+  title: string
+  content: string
+  authorNickname: string
+  complexName: string
+}
 
-  // 카테고리 필터
-  if (category !== '전체') {
-    posts = posts.filter(p => p.category === category)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
+
+const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  const response = await fetch(`${API_BASE_URL}${path}`, init)
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(text || '커뮤니티 API 요청에 실패했습니다.')
   }
-
-  // 정렬
-  if (sortType === '인기순') {
-    posts = [...posts].sort(
-      (a, b) => (b.likeCount * 2 + b.commentCount) - (a.likeCount * 2 + a.commentCount)
-    )
-  }
-
-  return posts
+  return (await response.json()) as T
 }
 
 export const fetchPosts = async (
-  aptId:    number | null,
+  aptId: number | null,
   category: string,
-  sortType: string
+  sortType: string,
 ): Promise<Post[]> => {
   if (aptId == null) return []
 
-  if (USE_MOCK_POSTS) {
-    await new Promise(r => setTimeout(r, 150))  // mock 딜레이
-    return fetchPostsMock(aptId, category, sortType)
-  }
-
   const params = new URLSearchParams({
-    aptId:    String(aptId),
+    aptId: String(aptId),
     category: category === '전체' ? '' : category,
     sortType,
   })
-  const res  = await fetch(`/api/community/posts?${params}`)
-  const data = await res.json()
-  if (!data.success) throw new Error(data.error?.message)
-  return data.data as Post[]
+
+  return requestJson<Post[]>(`/api/community/posts?${params.toString()}`)
 }
+
+export const fetchPostById = async (id: number): Promise<Post> =>
+  requestJson<Post>(`/api/community/posts/${id}`)
+
+export const createPost = async (params: CreatePostParams): Promise<Post> =>
+  requestJson<Post>('/api/community/posts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })

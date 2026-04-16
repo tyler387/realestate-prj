@@ -5,8 +5,8 @@ import { PostListSkeleton } from '../sidebar/SidebarSkeleton'
 import { TopAptItem } from './TopAptItem'
 
 export const TopTransactionApartments = () => {
-  const { regionId, subRegionId, setAptId } = useTradeFilterStore()
-  const { data, isLoading, isError } = useTopTransactionApartments(regionId, subRegionId)
+  const { setAptId } = useTradeFilterStore()
+  const { data, isLoading, isError } = useTopTransactionApartments()
 
   if (!isLoading && (isError || !data || data.length === 0)) return null
 

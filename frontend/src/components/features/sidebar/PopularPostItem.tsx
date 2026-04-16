@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import type { PopularPost } from '../../../data/mockSidebarData'
+import type { PopularPost } from '../../../types/sidebar'
 
 type Props = { rank: number; post: PopularPost }
 

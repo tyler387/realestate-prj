@@ -1,21 +1,36 @@
-﻿import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { ApartmentMarker } from '../../../types'
-import { mockPosts } from '../../../data/mockData'
 import { formatPrice } from '../../../utils/formatPrice'
 import { useUserStore } from '../../../stores/userStore'
 import { useUiStore } from '../../../stores/uiStore'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
+
+type RecentPost = { id: number; title: string }
 
 export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | null }) => {
   const navigate = useNavigate()
   const status = useUserStore((s) => s.status)
   const openAuthSheet = useUiStore((s) => s.openAuthSheet)
+  const [recentPosts, setRecentPosts] = useState<RecentPost[]>([])
+
+  useEffect(() => {
+    if (!apartment) {
+      setRecentPosts([])
+      return
+    }
+    fetch(`${API_BASE_URL}/api/community/posts?aptId=${apartment.id}&sortType=최신순`)
+      .then((r) => r.json())
+      .then((data: RecentPost[]) => setRecentPosts(data.slice(0, 3)))
+      .catch(() => setRecentPosts([]))
+  }, [apartment?.id])
 
   const handleWrite = () => {
     if (status === 'VERIFIED') {
       navigate('/write')
       return
     }
-
     openAuthSheet()
   }
 
@@ -26,8 +41,6 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
       </div>
     )
   }
-
-  const recentPosts = mockPosts.slice(0, 3)
 
   return (
     <div className="z-10 min-h-[200px] border-t border-gray-200 bg-white">
@@ -43,17 +56,19 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
           )}
         </div>
 
-        <div className="my-3 space-y-1">
-          {recentPosts.map((post) => (
-            <button
-              key={post.id}
-              onClick={() => navigate(`/post/${post.id}`)}
-              className="block w-full truncate text-left text-xs text-gray-600 hover:text-blue-500"
-            >
-              · {post.title}
-            </button>
-          ))}
-        </div>
+        {recentPosts.length > 0 && (
+          <div className="my-3 space-y-1">
+            {recentPosts.map((post) => (
+              <button
+                key={post.id}
+                onClick={() => navigate(`/post/${post.id}`)}
+                className="block w-full truncate text-left text-xs text-gray-600 hover:text-blue-500"
+              >
+                · {post.title}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex gap-2">
           <button

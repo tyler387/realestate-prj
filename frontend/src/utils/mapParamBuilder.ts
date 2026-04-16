@@ -6,10 +6,10 @@ export const buildParams = (
   zoomLevel: number
 ): string => {
   const p = new URLSearchParams({
-    minLat:    String(bounds.minLat),
-    maxLat:    String(bounds.maxLat),
-    minLng:    String(bounds.minLng),
-    maxLng:    String(bounds.maxLng),
+    swLat:     String(bounds.minLat),
+    neLat:     String(bounds.maxLat),
+    swLng:     String(bounds.minLng),
+    neLng:     String(bounds.maxLng),
     zoomLevel: String(zoomLevel),
   })
   if (filters.dealType)         p.append('dealType',  filters.dealType)

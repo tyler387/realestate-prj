@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useMapMarkers }    from '../../../hooks/useMapMarkers'
 import { useDebounce }      from '../../../hooks/useDebounce'
-import { USE_KAKAO_MAP }    from '../../../config/featureFlags'
 import { FilterChip }       from '../map/FilterChip'
-import { mockPopularApartments } from '../../../data/mockApartmentData'
 import { formatPriceShort } from '../../../utils/formatPrice'
 import type { Apartment }   from '../../../types'
 import type { MapDealType, MapFilters, MapMarkerItem } from '../../../types/map'
@@ -16,27 +14,6 @@ const toApartment = (item: MapMarkerItem): Apartment => ({
   lat:     item.lat,
   lng:     item.lng,
 })
-
-// ── MockMapSection ────────────────────────────────────────────────
-const MockMapSection = ({ onSelect }: { onSelect: (apt: Apartment) => void }) => (
-  <div className="relative flex-1 h-full bg-gray-100 overflow-hidden">
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      <p className="text-sm text-gray-400">지도 영역 (KakaoMap SDK 연동 예정)</p>
-    </div>
-    {mockPopularApartments.map((apt, i) => (
-      <button
-        key={apt.aptId}
-        onClick={() => onSelect(apt)}
-        className="absolute bg-white border border-blue-400 rounded-xl
-                   px-2 py-0.5 text-xs font-semibold text-blue-700 shadow-sm
-                   hover:bg-blue-50 transition-colors"
-        style={{ top: `${15 + i * 14}%`, left: `${10 + i * 14}%` }}
-      >
-        {formatPriceShort(235000)}
-      </button>
-    ))}
-  </div>
-)
 
 // ── MapSection ────────────────────────────────────────────────────
 export const MapSection = ({ onSelect }: { onSelect: (apt: Apartment) => void }) => {
@@ -61,8 +38,6 @@ export const MapSection = ({ onSelect }: { onSelect: (apt: Apartment) => void })
 
   // ── SDK 로드 & 지도 초기화 ──────────────────────────────────
   useEffect(() => {
-    if (!USE_KAKAO_MAP) return
-
     const container = mapContainerRef.current
     let isMounted   = true
 
@@ -128,8 +103,6 @@ export const MapSection = ({ onSelect }: { onSelect: (apt: Apartment) => void })
   useEffect(() => {
     if (mapInstanceRef.current) fetchMarkers()
   }, [debouncedDealType])
-
-  if (!USE_KAKAO_MAP) return <MockMapSection onSelect={onSelect} />
 
   if (loadError) {
     return (

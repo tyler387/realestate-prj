@@ -1,5 +1,5 @@
 ﻿type Props = {
-  apartment: { id: number; name: string; address: string; household: number }
+  apartment: { id: number; name: string; address: string; household?: number }
   onVerify: (apartment: { id: number; name: string }) => void
 }
 
@@ -9,7 +9,7 @@ export const ApartmentListItem = ({ apartment, onVerify }: Props) => {
       <div>
         <p className="text-sm font-semibold text-gray-900">{apartment.name}</p>
         <p className="text-xs text-gray-400">
-          {apartment.address} · {apartment.household.toLocaleString()}세대
+          {apartment.address}{apartment.household != null ? ` · ${apartment.household.toLocaleString()}세대` : ''}
         </p>
       </div>
       <button

@@ -4,15 +4,12 @@ import { useDebounce } from '../../../hooks/useDebounce'
 import { EmptyState } from '../../common/EmptyState'
 import { Skeleton } from '../../common/Skeleton'
 import {
-  USE_MOCK_SEARCH,
-  searchApartmentsMock,
-  mockPopularApartments,
-} from '../../../data/mockApartmentData'
-import {
   getRecentApartments,
   clearRecentApartments,
   saveRecentApartment,
 } from '../../../utils/recentApartments'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
 
 // ── SearchInput ────────────────────────────────────────────────────
 const SearchInput = ({
@@ -112,51 +109,16 @@ const RecentApartmentList = ({
   )
 }
 
-// ── PopularApartmentList ───────────────────────────────────────────
-const PopularApartmentList = ({
-  onSelect,
-}: {
-  onSelect: (apt: Apartment) => void
-}) => {
-  const data = mockPopularApartments
-
-  if (!data || data.length === 0) return null
-
-  return (
-    <div className="py-3">
-      <p className="text-xs font-medium text-gray-500 px-4 mb-1">인기 아파트</p>
-      {data.map((apt, i) => (
-        <div
-          key={apt.aptId}
-          onClick={() => onSelect(apt)}
-          className="flex items-center gap-3 px-4 py-3
-                     border-b border-gray-100 last:border-b-0
-                     cursor-pointer hover:bg-gray-50 transition-colors"
-        >
-          <span className={`w-5 text-xs font-bold flex-shrink-0 text-center
-            ${i < 3 ? 'text-blue-500' : 'text-gray-400'}`}>
-            {i + 1}
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{apt.aptName}</p>
-            <p className="text-xs text-gray-400 truncate">{apt.address}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // ── SearchSection ──────────────────────────────────────────────────
 export const SearchSection = ({
   onSelect,
 }: {
   onSelect: (apt: Apartment) => void
 }) => {
-  const [keyword, setKeyword]   = useState('')
-  const [results, setResults]   = useState<Apartment[]>([])
+  const [keyword, setKeyword]     = useState('')
+  const [results, setResults]     = useState<Apartment[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [isError, setIsError]   = useState(false)
+  const [isError, setIsError]     = useState(false)
 
   const debouncedKeyword = useDebounce(keyword, 300)
 
@@ -166,28 +128,22 @@ export const SearchSection = ({
       setIsError(false)
       return
     }
-    fetchSearch(debouncedKeyword)
-  }, [debouncedKeyword])
-
-  const fetchSearch = async (kw: string) => {
     setIsLoading(true)
     setIsError(false)
-    try {
-      if (USE_MOCK_SEARCH) {
-        await new Promise(r => setTimeout(r, 200))
-        setResults(searchApartmentsMock(kw))
-      } else {
-        const res  = await fetch(`/api/apartments/search?keyword=${encodeURIComponent(kw)}`)
-        const data = await res.json()
-        if (data.success) setResults(data.data)
-        else throw new Error(data.error?.message)
-      }
-    } catch {
-      setIsError(true)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    fetch(`${API_BASE_URL}/api/v1/apartments/search?keyword=${encodeURIComponent(debouncedKeyword)}`)
+      .then((r) => r.json())
+      .then((data: Array<{ id: number; complexName: string; roadAddress: string; latitude: number; longitude: number }>) => {
+        setResults(data.map((d) => ({
+          aptId:   String(d.id),
+          aptName: d.complexName,
+          address: d.roadAddress ?? '',
+          lat:     d.latitude ?? 0,
+          lng:     d.longitude ?? 0,
+        })))
+      })
+      .catch(() => setIsError(true))
+      .finally(() => setIsLoading(false))
+  }, [debouncedKeyword])
 
   const handleSelect = (apt: Apartment) => {
     saveRecentApartment(apt)
@@ -195,12 +151,7 @@ export const SearchSection = ({
   }
 
   const renderContent = () => {
-    if (keyword.length === 0) return (
-      <>
-        <RecentApartmentList onSelect={handleSelect} />
-        <PopularApartmentList onSelect={handleSelect} />
-      </>
-    )
+    if (keyword.length === 0) return <RecentApartmentList onSelect={handleSelect} />
 
     if (keyword.length < 2) return (
       <p className="text-xs text-gray-400 text-center py-8">

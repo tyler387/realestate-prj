@@ -5,8 +5,8 @@ import { PostListSkeleton, ErrorMessage } from '../sidebar/SidebarSkeleton'
 import { HighestDealItem } from './HighestDealItem'
 
 export const HighestPriceDeals = () => {
-  const { regionId, subRegionId, setAptId } = useTradeFilterStore()
-  const { data, isLoading, isError } = useHighestPriceDeals(regionId, subRegionId)
+  const { setAptId } = useTradeFilterStore()
+  const { data, isLoading, isError } = useHighestPriceDeals()
 
   return (
     <SidebarCard>

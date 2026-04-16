@@ -1,13 +1,10 @@
 import type { RefObject } from 'react'
-import { USE_KAKAO_MAP } from '../../../config/featureFlags'
 
 type ZoomControlProps = {
   mapInstanceRef: RefObject<any>
 }
 
 export const ZoomControl = ({ mapInstanceRef }: ZoomControlProps) => {
-  if (!USE_KAKAO_MAP) return null
-
   const zoomIn = () => {
     const map = mapInstanceRef.current
     if (map) map.setLevel(map.getLevel() - 1, { animate: true })

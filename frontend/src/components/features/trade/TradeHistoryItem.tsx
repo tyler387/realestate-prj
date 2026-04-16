@@ -1,4 +1,4 @@
-import { type TradeRecord } from '../../../data/mockTradeData'
+import { type TradeRecord } from '../../../types/trade'
 import { formatPrice } from '../../../utils/formatPrice'
 
 const BADGE_STYLES: Record<'매매' | '전세' | '월세', string> = {

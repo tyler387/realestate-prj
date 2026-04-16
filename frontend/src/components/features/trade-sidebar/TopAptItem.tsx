@@ -1,4 +1,4 @@
-import { type TopTransactionApartment } from '../../../data/mockTradeSidebarData'
+import { type TopTransactionApartment } from '../../../types/sidebar'
 
 type Props = {
   apt: TopTransactionApartment

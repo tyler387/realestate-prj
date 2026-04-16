@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { type PriceHistory } from '../../../data/mockTradeData'
+import { type PriceHistory } from '../../../types/trade'
 import { type TradeType } from './TradeTypeFilter'
 import { formatPrice } from '../../../utils/formatPrice'
 

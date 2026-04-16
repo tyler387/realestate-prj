@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import type { MostCommentedPost } from '../../../data/mockSidebarData'
+import type { MostCommentedPost } from '../../../types/sidebar'
 
 export const CommentedPostItem = ({ post }: { post: MostCommentedPost }) => {
   const navigate = useNavigate()
