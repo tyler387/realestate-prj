@@ -71,10 +71,11 @@ public interface ApartmentRepository extends JpaRepository<Apartment, Long> {
                 CONCAT(a.sido, ' ', a.sigungu, ' ', a.eup_myeon_dong) AS location,
                 a.total_household_count AS totalHouseholdCount,
                 a.completion_year AS completionYear,
-                rt.trade_amount AS recentSalePrice
+                rt.trade_amount AS recentSalePrice,
+                rt.exclusive_area AS recentSaleArea
             FROM apartment a
             LEFT JOIN LATERAL (
-                SELECT r.trade_amount
+                SELECT r.trade_amount, r.exclusive_area
                 FROM real_trade r
                 WHERE r.apartment_id = a.id
                   AND r.trade_type = 'SALE'

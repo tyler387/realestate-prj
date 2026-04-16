@@ -6,6 +6,7 @@ public record ApartmentSummaryDto(
         String location,
         Integer totalHouseholdCount,
         Integer completionYear,
-        Long recentSalePrice
+        Long recentSalePrice,
+        Double recentSaleArea
 ) {
 }

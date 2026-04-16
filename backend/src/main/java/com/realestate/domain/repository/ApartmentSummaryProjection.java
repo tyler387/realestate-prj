@@ -7,4 +7,5 @@ public interface ApartmentSummaryProjection {
     Integer getTotalHouseholdCount();
     Integer getCompletionYear();
     Long getRecentSalePrice();
+    Double getRecentSaleArea();
 }
