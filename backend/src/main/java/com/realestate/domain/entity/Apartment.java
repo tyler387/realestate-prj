@@ -51,6 +51,9 @@ public class Apartment {
     @Column(name = "total_household_count")
     private Integer totalHouseholdCount;
 
+    @Column(name = "kapt_code", length = 20)
+    private String kaptCode;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -66,7 +69,8 @@ public class Apartment {
             String legalDongCode,
             Point location,
             Integer completionYear,
-            Integer totalHouseholdCount
+            Integer totalHouseholdCount,
+            String kaptCode
     ) {
         this.complexName = complexName;
         this.roadAddress = roadAddress;
@@ -77,6 +81,7 @@ public class Apartment {
         this.location = location;
         this.completionYear = completionYear;
         this.totalHouseholdCount = totalHouseholdCount;
+        this.kaptCode = kaptCode;
     }
 
     public static Apartment create(
@@ -88,7 +93,8 @@ public class Apartment {
             String legalDongCode,
             Point location,
             Integer completionYear,
-            Integer totalHouseholdCount
+            Integer totalHouseholdCount,
+            String kaptCode
     ) {
         return new Apartment(
                 complexName,
@@ -99,7 +105,8 @@ public class Apartment {
                 legalDongCode,
                 location,
                 completionYear,
-                totalHouseholdCount
+                totalHouseholdCount,
+                kaptCode
         );
     }
 

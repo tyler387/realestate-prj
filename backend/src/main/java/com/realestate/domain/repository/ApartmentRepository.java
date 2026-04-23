@@ -4,12 +4,36 @@ import com.realestate.domain.entity.Apartment;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ApartmentRepository extends JpaRepository<Apartment, Long> {
 
     Optional<Apartment> findFirstByComplexNameAndSigungu(String complexName, String sigungu);
+
+    @Modifying
+    @Query("UPDATE Apartment a SET a.kaptCode = :kaptCode WHERE a.complexName = :name AND a.sigungu = :sigungu AND a.kaptCode IS NULL")
+    int updateKaptCodeIfNull(@Param("name") String name, @Param("sigungu") String sigungu, @Param("kaptCode") String kaptCode);
+
+    @Modifying
+    @Query("UPDATE Apartment a SET a.totalHouseholdCount = :count WHERE a.complexName = :name AND a.sigungu = :sigungu AND a.totalHouseholdCount IS NULL")
+    int updateHouseholdCountIfNull(@Param("name") String name, @Param("sigungu") String sigungu, @Param("count") Integer count);
+
+    @Modifying
+    @Query("UPDATE Apartment a SET a.completionYear = :year WHERE a.complexName = :name AND a.sigungu = :sigungu AND a.completionYear IS NULL")
+    int updateCompletionYearIfNull(@Param("name") String name, @Param("sigungu") String sigungu, @Param("year") Integer year);
+
+    @Query(value = "SELECT id, kapt_code FROM apartment WHERE kapt_code IS NOT NULL AND (total_household_count IS NULL OR completion_year IS NULL)", nativeQuery = true)
+    List<ApartmentKaptCodeProjection> findAllWithKaptCodeAndNullHousehold();
+
+    @Modifying
+    @Query("UPDATE Apartment a SET a.totalHouseholdCount = :count WHERE a.id = :id")
+    int updateHouseholdCountById(@Param("id") Long id, @Param("count") Integer count);
+
+    @Modifying
+    @Query("UPDATE Apartment a SET a.completionYear = :year WHERE a.id = :id")
+    int updateCompletionYearById(@Param("id") Long id, @Param("year") Integer year);
 
     @Query(value = """
             SELECT

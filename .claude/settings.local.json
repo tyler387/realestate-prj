@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "WebSearch",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(./gradlew compileJava)",
+      "Bash(JAVA_HOME=\"/c/Program Files/Java/jdk-17\" ./gradlew compileJava)",
+      "Bash(curl *)",
+      "WebFetch(domain:steemit.com)",
+      "WebFetch(domain:apis.data.go.kr)",
+      "WebFetch(domain:www.data.go.kr)"
     ]
   }
 }
