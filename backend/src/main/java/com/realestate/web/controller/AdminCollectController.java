@@ -37,13 +37,17 @@ public class AdminCollectController {
     // -----------------------------------------------------------------------
 
     /**
-     * 전체 지원 지역의 최근 3개월 실거래가를 비동기로 수집합니다.
+     * 전체 지원 지역의 실거래가를 비동기로 수집합니다.
      * 완료 여부와 관계없이 즉시 202 Accepted를 반환합니다.
+     *
+     * @param months 수집 개월 수 (기본 12, 최대 12)
      * 예) POST /api/v1/admin/collect
+     *     POST /api/v1/admin/collect?months=6
      */
     @PostMapping("/collect")
-    public ResponseEntity<Void> collect() {
-        CompletableFuture.runAsync(() -> realTradeCollector.collectRecentThreeMonths());
+    public ResponseEntity<Void> collect(@RequestParam(defaultValue = "12") int months) {
+        if (months < 1 || months > 12) return ResponseEntity.badRequest().build();
+        CompletableFuture.runAsync(() -> realTradeCollector.collectAllDistricts(months));
         return ResponseEntity.accepted().build();
     }
 

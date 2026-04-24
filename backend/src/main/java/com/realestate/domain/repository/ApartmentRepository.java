@@ -12,6 +12,8 @@ public interface ApartmentRepository extends JpaRepository<Apartment, Long> {
 
     Optional<Apartment> findFirstByComplexNameAndSigungu(String complexName, String sigungu);
 
+    Optional<Apartment> findFirstByComplexNameAndEupMyeonDong(String complexName, String eupMyeonDong);
+
     @Modifying
     @Query("UPDATE Apartment a SET a.kaptCode = :kaptCode WHERE a.complexName = :name AND a.sigungu = :sigungu AND a.kaptCode IS NULL")
     int updateKaptCodeIfNull(@Param("name") String name, @Param("sigungu") String sigungu, @Param("kaptCode") String kaptCode);
