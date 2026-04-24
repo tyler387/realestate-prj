@@ -76,11 +76,5 @@ public class CommunityPost {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
-        if (likeCount == null) {
-            likeCount = 0;
-        }
-        if (commentCount == null) {
-            commentCount = 0;
-        }
     }
 }

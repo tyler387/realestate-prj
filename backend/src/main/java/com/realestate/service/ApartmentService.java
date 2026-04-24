@@ -47,10 +47,11 @@ public class ApartmentService {
 
     @Transactional(readOnly = true)
     public List<ApartmentSearchDto> searchApartments(String keyword) {
-        if (keyword == null || keyword.trim().length() < 1) {
+        String trimmed = keyword == null ? "" : keyword.trim();
+        if (trimmed.isEmpty()) {
             return List.of();
         }
-        return apartmentRepository.searchByKeyword(keyword.trim())
+        return apartmentRepository.searchByKeyword(trimmed)
                 .stream()
                 .map(p -> new ApartmentSearchDto(
                         p.getId(),

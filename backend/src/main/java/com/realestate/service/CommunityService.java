@@ -100,24 +100,24 @@ public class CommunityService {
         return toDto(created);
     }
 
-    // stats 테이블 기반 — score(좋아요*2+댓글) 내림차순, 24h → 7d fallback (PRD §10.1)
+    // stats 테이블 기반 — score(좋아요*2+댓글) 내림차순, 24h → 7d fallback
     @Transactional(readOnly = true)
     public List<CommunityPostDto> getPopularPosts(Long aptId) {
         validateAptId(aptId);
-        List<Object[]> rows = postStatsRepository.findPopularPosts(aptId);
+        List<Object[]> rows = postStatsRepository.findPopularPosts(aptId, 1);
         if (rows.size() < 3) {
-            rows = postStatsRepository.findPopularPostsFallback(aptId);
+            rows = postStatsRepository.findPopularPosts(aptId, 7);
         }
         return rows.stream().map(this::toDtoFromStats).toList();
     }
 
-    // stats 테이블 기반 — 댓글 수 내림차순, 24h → 7d fallback (PRD §10.2)
+    // stats 테이블 기반 — 댓글 수 내림차순, 24h → 7d fallback
     @Transactional(readOnly = true)
     public List<CommunityPostDto> getMostCommentedPosts(Long aptId) {
         validateAptId(aptId);
-        List<Object[]> rows = postStatsRepository.findMostCommentedPosts(aptId);
+        List<Object[]> rows = postStatsRepository.findMostCommentedPosts(aptId, 1);
         if (rows.size() < 3) {
-            rows = postStatsRepository.findMostCommentedPostsFallback(aptId);
+            rows = postStatsRepository.findMostCommentedPosts(aptId, 7);
         }
         return rows.stream().map(this::toDtoFromStats).toList();
     }
@@ -181,9 +181,10 @@ public class CommunityService {
                 .toList();
     }
 
-    // keyword_stats 없을 때 텍스트 파싱 fallback
+    // keyword_stats 없을 때 텍스트 파싱 fallback — 최근 50개만 분석
     private List<String> extractKeywordsFromPosts(Long aptId) {
-        List<CommunityPost> posts = communityPostRepository.findByAptIdOrderByCreatedAtDesc(aptId);
+        List<CommunityPost> posts = communityPostRepository.findByAptIdOrderByCreatedAtDesc(aptId,
+                org.springframework.data.domain.PageRequest.of(0, 50));
         Map<String, Long> wordCount = posts.stream()
                 .flatMap(post -> Arrays.stream((post.getTitle() + " " + post.getContent()).split("[\\s,!?.]+"))
                         .map(w -> w.replaceAll("[^가-힣a-zA-Z0-9]", ""))

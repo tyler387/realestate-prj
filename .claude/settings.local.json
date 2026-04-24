@@ -11,7 +11,8 @@
       "WebFetch(domain:www.data.go.kr)",
       "Bash(./gradlew bootRun --stacktrace)",
       "Bash(JAVA_HOME=\"C:/Program Files/Java/jdk-17\" ./gradlew bootRun)",
-      "Bash(git -C /c/dev/workspace/toyPrj log --all --oneline)"
+      "Bash(git -C /c/dev/workspace/toyPrj log --all --oneline)",
+      "Bash(JAVA_HOME=\"/c/Program Files/Java/jdk-17\" /c/dev/workspace/toyPrj/backend/gradlew compileJava)"
     ]
   }
 }

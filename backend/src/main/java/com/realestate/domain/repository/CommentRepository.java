@@ -1,12 +1,7 @@
 package com.realestate.domain.repository;
 
 import com.realestate.domain.entity.Comment;
-import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
-
-    List<Comment> findByPostIdOrderByCreatedAtDesc(Long postId);
-
-    long countByPostId(Long postId);
 }
