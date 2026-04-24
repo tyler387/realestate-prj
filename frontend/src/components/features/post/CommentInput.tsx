@@ -1,11 +1,23 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 
-export const CommentInput = () => {
+type Props = {
+  onSubmit: (content: string) => void
+}
+
+export const CommentInput = ({ onSubmit }: Props) => {
   const [value, setValue] = useState('')
 
   const handleSubmit = () => {
     if (!value.trim()) return
+    onSubmit(value.trim())
     setValue('')
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit()
+    }
   }
 
   return (
@@ -13,6 +25,7 @@ export const CommentInput = () => {
       <input
         value={value}
         onChange={(event) => setValue(event.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder="댓글을 입력하세요"
         className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm outline-none focus:border-blue-500"
       />

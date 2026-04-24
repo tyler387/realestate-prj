@@ -119,19 +119,26 @@ public class RealTradeCollector {
 
         do {
             final int currentPage = pageNo;
-            JsonNode response = webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                    .scheme("https").host("apis.data.go.kr").path(TRADE_API_PATH)
-                    .queryParam("serviceKey", publicDataServiceKey)
-                    .queryParam("LAWD_CD", target.lawdCd())
-                    .queryParam("DEAL_YMD", dealYmd)
-                    .queryParam("numOfRows", numOfRows)
-                    .queryParam("pageNo", currentPage)
-                    .queryParam("_type", "json")
-                    .build())
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .block();
+            JsonNode response;
+            try {
+                response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                        .scheme("https").host("apis.data.go.kr").path(TRADE_API_PATH)
+                        .queryParam("serviceKey", publicDataServiceKey)
+                        .queryParam("LAWD_CD", target.lawdCd())
+                        .queryParam("DEAL_YMD", dealYmd)
+                        .queryParam("numOfRows", numOfRows)
+                        .queryParam("pageNo", currentPage)
+                        .queryParam("_type", "json")
+                        .build())
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+            } catch (Exception e) {
+                log.error("API 호출 실패 — sigungu={}, dealYmd={}, page={}: {}",
+                        target.sigungu(), dealYmd, currentPage, e.getMessage());
+                break;
+            }
 
             JsonNode body = response == null ? null : response.path("response").path("body");
             totalCount = body == null ? 0 : body.path("totalCount").asInt(0);

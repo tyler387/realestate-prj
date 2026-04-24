@@ -4,6 +4,7 @@ import com.realestate.domain.entity.CommunityPost;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,6 +13,24 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
     List<CommunityPost> findByAptIdOrderByCreatedAtDesc(Long aptId);
 
     List<CommunityPost> findByAptIdOrderByCreatedAtDesc(Long aptId, Pageable pageable);
+
+    List<CommunityPost> findByAuthorNicknameOrderByCreatedAtDesc(String authorNickname);
+
+    @Modifying
+    @Query("UPDATE CommunityPost p SET p.commentCount = p.commentCount + 1 WHERE p.id = :id")
+    void incrementCommentCount(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE CommunityPost p SET p.commentCount = GREATEST(p.commentCount - 1, 0) WHERE p.id = :id")
+    void decrementCommentCount(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE CommunityPost p SET p.likeCount = p.likeCount + 1 WHERE p.id = :id")
+    void incrementLikeCount(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE CommunityPost p SET p.likeCount = GREATEST(p.likeCount - 1, 0) WHERE p.id = :id")
+    void decrementLikeCount(@Param("id") Long id);
 
     List<CommunityPost> findByAptIdAndCategoryOrderByCreatedAtDesc(Long aptId, String category);
 

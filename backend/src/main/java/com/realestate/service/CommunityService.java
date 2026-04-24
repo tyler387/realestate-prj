@@ -1,15 +1,22 @@
 package com.realestate.service;
 
+import com.realestate.domain.entity.Comment;
 import com.realestate.domain.entity.CommunityPost;
 import com.realestate.domain.entity.KeywordLog;
+import com.realestate.domain.entity.PostLikeLog;
 import com.realestate.domain.entity.PostViewLog;
+import com.realestate.domain.repository.CommentRepository;
 import com.realestate.domain.repository.CommunityPostRepository;
 import com.realestate.domain.repository.KeywordLogRepository;
 import com.realestate.domain.repository.KeywordStatsRepository;
+import com.realestate.domain.repository.PostLikeLogRepository;
 import com.realestate.domain.repository.PostStatsRepository;
 import com.realestate.domain.repository.PostViewLogRepository;
+import com.realestate.web.dto.CommentDto;
 import com.realestate.web.dto.CommunityPostDto;
+import com.realestate.web.dto.CreateCommentRequest;
 import com.realestate.web.dto.CreateCommunityPostRequest;
+import com.realestate.web.dto.LikeToggleResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -42,6 +49,8 @@ public class CommunityService {
     private final KeywordStatsRepository keywordStatsRepository;
     private final PostViewLogRepository postViewLogRepository;
     private final KeywordLogRepository keywordLogRepository;
+    private final CommentRepository commentRepository;
+    private final PostLikeLogRepository postLikeLogRepository;
 
     @Transactional(readOnly = true)
     public List<CommunityPostDto> getPosts(Long aptId, String category, String sortType) {
@@ -133,7 +142,90 @@ public class CommunityService {
         return extractKeywordsFromPosts(aptId);
     }
 
+    // 댓글 목록 조회
+    @Transactional(readOnly = true)
+    public List<CommentDto> getComments(Long postId) {
+        return commentRepository.findByPostIdOrderByCreatedAtDesc(postId)
+                .stream().map(this::toCommentDto).toList();
+    }
+
+    // 댓글 작성
+    @Transactional
+    public CommentDto createComment(Long postId, CreateCommentRequest request) {
+        CommunityPost post = communityPostRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+        if (isBlank(request.authorNickname())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authorNickname is required");
+        }
+        if (isBlank(request.content())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "content is required");
+        }
+        Comment saved = commentRepository.save(
+                Comment.create(postId, request.authorNickname().trim(), request.content().trim()));
+        communityPostRepository.incrementCommentCount(postId);
+        return toCommentDto(saved);
+    }
+
+    // 댓글 삭제
+    @Transactional
+    public void deleteComment(Long commentId, String authorNickname) {
+        Comment comment = commentRepository.findByIdAndAuthorNickname(commentId, authorNickname)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot delete this comment"));
+        commentRepository.delete(comment);
+        communityPostRepository.decrementCommentCount(comment.getPostId());
+    }
+
+    // 좋아요 토글
+    @Transactional
+    public LikeToggleResponse toggleLike(Long postId, String authorNickname) {
+        CommunityPost post = communityPostRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+        if (isBlank(authorNickname)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authorNickname is required");
+        }
+        boolean alreadyLiked = postLikeLogRepository.existsByPostIdAndAuthorNickname(postId, authorNickname);
+        if (alreadyLiked) {
+            postLikeLogRepository.deleteByPostIdAndAuthorNickname(postId, authorNickname);
+            communityPostRepository.decrementLikeCount(postId);
+            return new LikeToggleResponse(false, Math.max(0, post.getLikeCount() - 1));
+        } else {
+            postLikeLogRepository.save(PostLikeLog.create(postId, authorNickname, post.getAptId()));
+            communityPostRepository.incrementLikeCount(postId);
+            return new LikeToggleResponse(true, post.getLikeCount() + 1);
+        }
+    }
+
+    // 내가 쓴 게시글
+    @Transactional(readOnly = true)
+    public List<CommunityPostDto> getMyPosts(String authorNickname) {
+        if (isBlank(authorNickname)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authorNickname is required");
+        }
+        return communityPostRepository.findByAuthorNicknameOrderByCreatedAtDesc(authorNickname)
+                .stream().map(this::toDto).toList();
+    }
+
+    // 내가 쓴 댓글
+    @Transactional(readOnly = true)
+    public List<CommentDto> getMyComments(String authorNickname) {
+        if (isBlank(authorNickname)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authorNickname is required");
+        }
+        return commentRepository.findByAuthorNicknameOrderByCreatedAtDesc(authorNickname)
+                .stream().map(this::toCommentDto).toList();
+    }
+
     // ── private helpers ──────────────────────────────────────
+
+    private CommentDto toCommentDto(Comment comment) {
+        return new CommentDto(
+                comment.getId(),
+                comment.getPostId(),
+                comment.getAuthorNickname(),
+                comment.getContent(),
+                toRelativeTime(comment.getCreatedAt())
+        );
+    }
 
     private CommunityPostDto toDto(CommunityPost post) {
         return new CommunityPostDto(

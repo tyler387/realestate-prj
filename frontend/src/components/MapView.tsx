@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMapFilterStore }   from '../stores/mapFilterStore'
 import { useMapMarkers }       from '../hooks/useMapMarkers'
 import { useDebounce }         from '../hooks/useDebounce'
@@ -21,6 +21,7 @@ const toApartmentMarker = (item: MapMarkerItem): ApartmentMarker => ({
 })
 
 export const MapView = () => {
+  const idleHandlerRef = useRef<(() => void) | null>(null)
   const filters = useMapFilterStore()
 
   // 객체 참조 문제 회피 — 개별 값 debounce
@@ -98,9 +99,9 @@ export const MapView = () => {
           })
 
           // idle 이벤트 → throttle 500ms 마커 갱신
-          window.kakao.maps.event.addListener(mapInstanceRef.current, 'idle', () => {
-            fetchMarkers()
-          })
+          const idleHandler = () => { fetchMarkers() }
+          idleHandlerRef.current = idleHandler
+          window.kakao.maps.event.addListener(mapInstanceRef.current, 'idle', idleHandler)
 
           fetchMarkers()
         })
@@ -111,6 +112,12 @@ export const MapView = () => {
 
     return () => {
       isMounted = false
+      const map     = mapInstanceRef.current
+      const handler = idleHandlerRef.current
+      if (map && handler && window.kakao?.maps?.event) {
+        window.kakao.maps.event.removeListener(map, 'idle', handler)
+        idleHandlerRef.current = null
+      }
     }
   }, [])   // 마운트 1회
 

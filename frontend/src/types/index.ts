@@ -20,8 +20,8 @@ export type Post = {
 
 export type Comment = {
   id: number
+  postId: number
   authorNickname: string
-  complexName: string
   content: string
   createdAt: string
 }

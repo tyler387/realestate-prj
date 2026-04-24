@@ -17,7 +17,7 @@ import { fetchPosts }            from '../services/communityService'
 export const CommunityPage = () => {
   const { apartmentId, status } = useUserStore()
   const { selectedCategory, sortType, resetFilters } = usePostStore()
-  const { resetCommunityFilters }   = useUiStore()
+  const { searchKeyword, setSearchKeyword, resetCommunityFilters } = useUiStore()
 
   const [isBannerVisible, setIsBannerVisible] = useState(true)
   const [isModalOpen,     setIsModalOpen]     = useState(false)
@@ -47,6 +47,14 @@ export const CommunityPage = () => {
     staleTime: 1000 * 60 * 5,
   })
 
+  // 키워드 필터: 제목 또는 본문에 키워드가 포함된 게시글만 표시
+  const filteredPosts = searchKeyword
+    ? posts.filter(
+        (p) =>
+          p.title.includes(searchKeyword) || p.content.includes(searchKeyword),
+      )
+    : posts
+
   // ── 배너 우선순위 렌더링 ──────────────────────────────────────
   const renderBanner = () => {
     if (apartmentId == null) {
@@ -62,11 +70,21 @@ export const CommunityPage = () => {
 
   // ── 피드 렌더링 ──────────────────────────────────────────────
   const renderFeed = () => {
-    if (apartmentId == null)    return null
-    if (isLoading)              return <PostCardSkeleton />
-    if (isError)                return <EmptyState icon="⚠️" title="데이터를 불러올 수 없습니다" />
-    if (posts.length === 0)     return <EmptyState icon="📭" title="아직 게시글이 없습니다" />
-    return <PostList posts={posts} />
+    if (apartmentId == null) return null
+    if (isLoading)           return <PostCardSkeleton />
+    if (isError)             return <EmptyState icon="⚠️" title="데이터를 불러올 수 없습니다" />
+    if (filteredPosts.length === 0)
+      return (
+        <EmptyState
+          icon="🔍"
+          title={
+            searchKeyword
+              ? `'${searchKeyword}' 관련 게시글이 없습니다`
+              : '아직 게시글이 없습니다'
+          }
+        />
+      )
+    return <PostList posts={filteredPosts} />
   }
 
   return (
@@ -79,6 +97,24 @@ export const CommunityPage = () => {
       </div>
 
       <CategoryFilter />
+
+      {/* 활성 키워드 필터 표시 */}
+      {searchKeyword && (
+        <div className="flex items-center gap-2 px-4 pb-2">
+          <span className="text-xs text-gray-500">키워드 필터:</span>
+          <span className="flex items-center gap-1 rounded-full bg-blue-500 px-3 py-1 text-xs text-white">
+            {searchKeyword}
+            <button
+              onClick={() => setSearchKeyword(null)}
+              className="ml-1 font-bold leading-none hover:opacity-70"
+              aria-label="키워드 필터 해제"
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )}
+
       <SortDropdown />
 
       {renderFeed()}

@@ -98,7 +98,7 @@ export const SignupPage = () => {
 
   const commitMember = () => {
     setUser({
-      userId: 1,
+      userId: Date.now(),
       nickname,
       status: 'MEMBER',
       apartmentId: null,
