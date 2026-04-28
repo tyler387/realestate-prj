@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ServiceLogo } from '../components/features/auth/ServiceLogo'
-import { mockLoginUser, mockWrongCredentials } from '../data/mockAuthData'
+import { authApi, tokenStorage } from '../services/authService'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
 
@@ -29,26 +29,29 @@ export const LoginPage = () => {
 
   const isSubmitEnabled = email.length > 0 && password.length > 0
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isSubmitEnabled || isLoading) return
     setServerError('')
     setIsLoading(true)
 
-    window.setTimeout(() => {
-      const wrong =
-        email === mockWrongCredentials.email && password === mockWrongCredentials.password
-
-      if (wrong) {
-        setServerError('이메일 또는 비밀번호가 올바르지 않아요')
-        setIsLoading(false)
-        return
-      }
-
-      setUser(mockLoginUser)
+    try {
+      const res = await authApi.login(email, password)
+      tokenStorage.set(res.token)
+      setUser({
+        userId:        res.userId,
+        nickname:      res.nickname,
+        status:        res.status,
+        apartmentId:   res.apartmentId,
+        apartmentName: res.apartmentName,
+      })
       const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo
       showToast('로그인 되었어요 👋', 'success')
       navigate(redirectTo || '/', { replace: true })
-    }, 800)
+    } catch {
+      setServerError('이메일 또는 비밀번호가 올바르지 않아요')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

@@ -18,8 +18,10 @@ export const VerifyPage = () => {
       userId: userId ?? 1,
       nickname: nickname ?? '익명_7823',
       status: 'VERIFIED',
-      apartmentId: apartment.id,
-      apartmentName: apartment.name,
+      apartmentId:           apartment.id,
+      apartmentName:         apartment.name,
+      verifiedApartmentId:   apartment.id,
+      verifiedApartmentName: apartment.name,
     })
 
     showToast(`${apartment.name} 인증 완료! ✓`, 'success')

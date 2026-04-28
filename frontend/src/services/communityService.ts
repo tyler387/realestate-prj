@@ -1,4 +1,5 @@
 import type { Comment, Post } from '../types'
+import { tokenStorage } from './authService'
 
 type CreatePostParams = {
   aptId: number
@@ -16,8 +17,19 @@ export type LikeToggleResponse = {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
 
+const authHeaders = (): HeadersInit => {
+  const token = tokenStorage.get()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${path}`, init)
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      ...authHeaders(),
+      ...init?.headers,
+    },
+  })
   if (!response.ok) {
     const text = await response.text()
     throw new Error(text || '커뮤니티 API 요청에 실패했습니다.')
@@ -26,7 +38,13 @@ const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
 }
 
 const requestVoid = async (path: string, init?: RequestInit): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}${path}`, init)
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      ...authHeaders(),
+      ...init?.headers,
+    },
+  })
   if (!response.ok) {
     const text = await response.text()
     throw new Error(text || 'API 요청에 실패했습니다.')

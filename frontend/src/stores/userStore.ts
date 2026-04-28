@@ -1,23 +1,28 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { AuthStatus } from '../types'
+import { tokenStorage } from '../services/authService'
 
 type UserState = {
-  userId:        number | null
-  nickname:      string | null
-  status:        AuthStatus
-  apartmentId:   number | null
-  apartmentName: string | null
+  userId:                 number | null
+  nickname:               string | null
+  status:                 AuthStatus
+  apartmentId:            number | null
+  apartmentName:          string | null
+  verifiedApartmentId:    number | null
+  verifiedApartmentName:  string | null
   setUser: (user: Partial<Omit<UserState, 'setUser' | 'logout'>>) => void
   logout:  () => void
 }
 
 const initialState = {
-  userId:        null,
-  nickname:      null,
-  status:        'GUEST' as AuthStatus,
-  apartmentId:   null,
-  apartmentName: null,
+  userId:                 null,
+  nickname:               null,
+  status:                 'GUEST' as AuthStatus,
+  apartmentId:            null,
+  apartmentName:          null,
+  verifiedApartmentId:    null,
+  verifiedApartmentName:  null,
 }
 
 export const useUserStore = create<UserState>()(
@@ -25,15 +30,21 @@ export const useUserStore = create<UserState>()(
     (set) => ({
       ...initialState,
       setUser: (user) => set((state) => ({ ...state, ...user })),
-      logout:  () => set({ ...initialState }),
+      logout:  () => {
+        tokenStorage.remove()
+        set({ ...initialState })
+      },
     }),
     {
       name: 'user-store',
       partialize: (state) => ({
-        // 새로고침 후 status + 아파트 정보 복원 (userId/nickname은 세션 기반 제외)
-        status:        state.status,
-        apartmentId:   state.apartmentId,
-        apartmentName: state.apartmentName,
+        userId:                state.userId,
+        nickname:              state.nickname,
+        status:                state.status,
+        apartmentId:           state.apartmentId,
+        apartmentName:         state.apartmentName,
+        verifiedApartmentId:   state.verifiedApartmentId,
+        verifiedApartmentName: state.verifiedApartmentName,
       }) as UserState,
     }
   )

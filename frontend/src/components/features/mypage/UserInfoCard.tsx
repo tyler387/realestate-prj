@@ -5,14 +5,14 @@ export const UserInfoCard = () => {
   const navigate = useNavigate()
   const nickname = useUserStore((s) => s.nickname)
   const status = useUserStore((s) => s.status)
-  const apartmentName = useUserStore((s) => s.apartmentName)
+  const verifiedApartmentName = useUserStore((s) => s.verifiedApartmentName)
 
   return (
     <div className="bg-white px-4 py-5">
       <p className="text-lg font-bold text-gray-900">{nickname ?? '이웃'}</p>
 
       {status === 'VERIFIED' ? (
-        <p className="mt-1 text-sm text-green-500">{apartmentName ?? '아파트'} · 인증완료 ✓</p>
+        <p className="mt-1 text-sm text-green-500">{verifiedApartmentName ?? '아파트'} · 인증완료 ✓</p>
       ) : (
         <div>
           <span className="mt-1 inline-flex rounded-full bg-orange-50 px-2 py-0.5 text-xs text-orange-500">

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { StepIndicator } from '../components/features/auth/StepIndicator'
 import { StepNavigation } from '../components/features/auth/StepNavigation'
 import { TermsBottomSheet } from '../components/features/auth/TermsBottomSheet'
-import { getRandomNickname, mockUsedEmails, mockUsedNicknames } from '../data/mockAuthData'
+import { getRandomNickname } from '../data/mockAuthData'
+import { authApi, tokenStorage } from '../services/authService'
 import { useUserStore } from '../stores/userStore'
 
 type TermsKey = 'service' | 'privacy' | 'marketing'
@@ -37,30 +38,38 @@ export const SignupPage = () => {
   })
 
   const [openedTerm, setOpenedTerm] = useState<TermsKey | null>(null)
+  const [isSigningUp, setIsSigningUp] = useState(false)
+  const [signupError, setSignupError] = useState('')
 
   useEffect(() => {
-    if (!email) {
+    if (!email || !emailRegex.test(email)) {
       setIsUsedEmail(false)
       return
     }
-
-    const timer = window.setTimeout(() => {
-      setIsUsedEmail(mockUsedEmails.includes(email.trim().toLowerCase()))
+    const timer = window.setTimeout(async () => {
+      try {
+        const { available } = await authApi.checkEmail(email.trim().toLowerCase())
+        setIsUsedEmail(!available)
+      } catch {
+        setIsUsedEmail(false)
+      }
     }, 500)
-
     return () => window.clearTimeout(timer)
   }, [email])
 
   useEffect(() => {
-    if (!nickname) {
+    if (!nickname || nickname.length < 2) {
       setIsUsedNickname(false)
       return
     }
-
-    const timer = window.setTimeout(() => {
-      setIsUsedNickname(mockUsedNicknames.includes(nickname.trim()))
+    const timer = window.setTimeout(async () => {
+      try {
+        const { available } = await authApi.checkNickname(nickname.trim())
+        setIsUsedNickname(!available)
+      } catch {
+        setIsUsedNickname(false)
+      }
     }, 500)
-
     return () => window.clearTimeout(timer)
   }, [nickname])
 
@@ -74,7 +83,7 @@ export const SignupPage = () => {
     if (step === 1) return emailRegex.test(email) && !isUsedEmail
     if (step === 2) return hasEng && hasNum && hasLength && passwordMatched
     if (step === 3) return nickname.length >= 2 && nickname.length <= 10 && !hasSpecialInNickname && !isUsedNickname
-    if (step === 4) return terms.service && terms.privacy
+    if (step === 4) return terms.service && terms.privacy && !isSigningUp
     return true
   }, [
     step,
@@ -88,22 +97,44 @@ export const SignupPage = () => {
     hasSpecialInNickname,
     isUsedNickname,
     terms,
+    isSigningUp,
   ])
 
   const handlePrev = () => setStep((value) => Math.max(1, value - 1))
-  const handleNext = () => {
-    if (!canProceed) return
-    setStep((value) => Math.min(5, value + 1))
-  }
+  const handleNext = async () => {
+    if (!canProceed || isSigningUp) return
 
-  const commitMember = () => {
-    setUser({
-      userId: Date.now(),
-      nickname,
-      status: 'MEMBER',
-      apartmentId: null,
-      apartmentName: null,
-    })
+    // Step 4 → 5 전환 시 실제 회원가입 API 호출
+    if (step === 4) {
+      setIsSigningUp(true)
+      setSignupError('')
+      try {
+        const res = await authApi.signup({
+          email,
+          password,
+          nickname,
+          serviceAgreed:   terms.service,
+          privacyAgreed:   terms.privacy,
+          marketingAgreed: terms.marketing,
+        })
+        tokenStorage.set(res.token)
+        setUser({
+          userId:        res.userId,
+          nickname:      res.nickname,
+          status:        'MEMBER',
+          apartmentId:   null,
+          apartmentName: null,
+        })
+        setStep(5)
+      } catch (e) {
+        setSignupError(e instanceof Error ? e.message : '회원가입에 실패했어요. 다시 시도해주세요.')
+      } finally {
+        setIsSigningUp(false)
+      }
+      return
+    }
+
+    setStep((value) => Math.min(5, value + 1))
   }
 
   const allChecked = terms.service && terms.privacy && terms.marketing
@@ -185,6 +216,9 @@ export const SignupPage = () => {
         {step === 4 && (
           <section className="mt-6">
             <h2 className="mb-4 text-xl font-bold text-gray-900">약관에 동의해주세요</h2>
+            {signupError && (
+              <p className="mb-3 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-500">{signupError}</p>
+            )}
             <div className="rounded-xl border border-gray-100 bg-white px-4">
               <label className="mb-3 flex items-center gap-3 border-b border-gray-100 py-3">
                 <input
@@ -241,19 +275,13 @@ export const SignupPage = () => {
             </div>
             <div className="mt-8 px-4">
               <button
-                onClick={() => {
-                  commitMember()
-                  navigate('/verify', { state: { from: '/signup' } })
-                }}
+                onClick={() => navigate('/verify', { state: { from: '/signup' } })}
                 className="h-12 w-full rounded-xl bg-blue-500 text-sm font-semibold text-white"
               >
                 지금 거주지 인증하기
               </button>
               <button
-                onClick={() => {
-                  commitMember()
-                  navigate('/signup/done', { replace: true })
-                }}
+                onClick={() => navigate('/signup/done', { replace: true })}
                 className="mt-3 h-10 w-full text-sm text-gray-400"
               >
                 나중에 할게요
