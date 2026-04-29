@@ -9,7 +9,9 @@ import com.realestate.web.dto.LikeToggleResponse;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,8 +37,11 @@ public class CommunityController {
     }
 
     @GetMapping("/posts/{id}")
-    public CommunityPostDto getPost(@PathVariable Long id) {
-        return communityService.getPost(id);
+    public CommunityPostDto getPost(
+            @PathVariable Long id,
+            @RequestParam(required = false) String nickname
+    ) {
+        return communityService.getPost(id, nickname);
     }
 
     @PostMapping("/posts")
@@ -69,7 +74,14 @@ public class CommunityController {
         return communityService.createComment(postId, request);
     }
 
+    @DeleteMapping("/posts/{postId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deletePost(@PathVariable Long postId, @RequestParam String authorNickname) {
+        communityService.deletePost(postId, authorNickname);
+    }
+
     @DeleteMapping("/comments/{commentId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteComment(@PathVariable Long commentId, @RequestParam String authorNickname) {
         communityService.deleteComment(commentId, authorNickname);
     }

@@ -8,4 +8,6 @@ public interface PostLikeLogRepository extends JpaRepository<PostLikeLog, Long> 
     boolean existsByPostIdAndAuthorNickname(Long postId, String authorNickname);
 
     void deleteByPostIdAndAuthorNickname(Long postId, String authorNickname);
+
+    void deleteByPostId(Long postId);
 }

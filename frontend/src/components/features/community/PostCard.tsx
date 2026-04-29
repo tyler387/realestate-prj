@@ -16,7 +16,11 @@ export const PostCard = ({ post }: { post: Post }) => {
       <h3 className="mb-1 line-clamp-1 text-base font-semibold text-gray-900">{post.title}</h3>
       <p className="mb-3 line-clamp-2 text-sm text-gray-700">{post.content}</p>
       <div className="flex items-center justify-between text-xs text-gray-400">
-        <span>{post.complexName}_익명 · {post.createdAt}</span>
+        <span className="flex items-center gap-1.5">
+          <span>{post.authorNickname}</span>
+          <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-500">{post.complexName}</span>
+          <span>· {post.createdAt}</span>
+        </span>
         <div className="flex gap-3">
           <span>❤️ {post.likeCount}</span>
           <span>💬 {post.commentCount}</span>

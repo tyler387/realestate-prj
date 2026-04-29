@@ -63,4 +63,11 @@ export const authApi = {
     authRequest<{ available: boolean }>(
       `/api/auth/check-nickname?nickname=${encodeURIComponent(nickname)}`
     ),
+
+  verify: (apartmentId: number, apartmentName: string) =>
+    authRequest<AuthResponse>('/api/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ apartmentId, apartmentName }),
+      headers: { Authorization: `Bearer ${tokenStorage.get() ?? ''}` },
+    }),
 }

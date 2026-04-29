@@ -5,6 +5,7 @@ import com.realestate.service.AuthService;
 import com.realestate.web.dto.AuthResponse;
 import com.realestate.web.dto.LoginRequest;
 import com.realestate.web.dto.SignupRequest;
+import com.realestate.web.dto.VerifyRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,12 @@ public class AuthController {
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout() {}
+
+    @PostMapping("/verify")
+    public AuthResponse verify(@RequestBody VerifyRequest req, Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        return authService.verifyResidence(user, req);
+    }
 
     @GetMapping("/me")
     public AuthResponse me(Authentication authentication) {

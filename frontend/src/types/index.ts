@@ -22,6 +22,8 @@ export type Comment = {
   id: number
   postId: number
   authorNickname: string
+  authorAptId?: number | null
+  authorAptName?: string | null
   content: string
   createdAt: string
 }

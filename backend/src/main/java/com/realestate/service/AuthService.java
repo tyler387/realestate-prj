@@ -6,6 +6,7 @@ import com.realestate.domain.repository.UserRepository;
 import com.realestate.web.dto.AuthResponse;
 import com.realestate.web.dto.LoginRequest;
 import com.realestate.web.dto.SignupRequest;
+import com.realestate.web.dto.VerifyRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -61,6 +62,17 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse getMe(User user) {
         return toAuthResponse(user);
+    }
+
+    @Transactional
+    public AuthResponse verifyResidence(User user, VerifyRequest req) {
+        if (req.apartmentId() == null || req.apartmentName() == null || req.apartmentName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "아파트 정보가 올바르지 않아요");
+        }
+        User managed = userRepository.findById(user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없어요"));
+        managed.verify(req.apartmentId(), req.apartmentName().trim());
+        return toAuthResponse(managed);
     }
 
     @Transactional(readOnly = true)

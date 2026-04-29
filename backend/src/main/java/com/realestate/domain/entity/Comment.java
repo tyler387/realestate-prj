@@ -31,17 +31,25 @@ public class Comment {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "author_apt_id")
+    private Long authorAptId;
+
+    @Column(name = "author_apt_name", length = 100)
+    private String authorAptName;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    private Comment(Long postId, String authorNickname, String content) {
+    private Comment(Long postId, String authorNickname, String content, Long authorAptId, String authorAptName) {
         this.postId = postId;
         this.authorNickname = authorNickname;
         this.content = content;
+        this.authorAptId = authorAptId;
+        this.authorAptName = authorAptName;
     }
 
-    public static Comment create(Long postId, String authorNickname, String content) {
-        return new Comment(postId, authorNickname, content);
+    public static Comment create(Long postId, String authorNickname, String content, Long authorAptId, String authorAptName) {
+        return new Comment(postId, authorNickname, content, authorAptId, authorAptName);
     }
 
     @PrePersist

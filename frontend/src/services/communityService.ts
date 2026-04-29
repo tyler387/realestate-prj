@@ -65,8 +65,10 @@ export const fetchPosts = async (
   return requestJson<Post[]>(`/api/community/posts?${params.toString()}`)
 }
 
-export const fetchPostById = async (id: number): Promise<Post> =>
-  requestJson<Post>(`/api/community/posts/${id}`)
+export const fetchPostById = async (id: number, nickname?: string | null): Promise<Post> => {
+  const params = nickname ? `?nickname=${encodeURIComponent(nickname)}` : ''
+  return requestJson<Post>(`/api/community/posts/${id}${params}`)
+}
 
 export const createPost = async (params: CreatePostParams): Promise<Post> =>
   requestJson<Post>('/api/community/posts', {
@@ -82,12 +84,19 @@ export const createComment = async (
   postId: number,
   authorNickname: string,
   content: string,
+  authorAptId?: number | null,
+  authorAptName?: string | null,
 ): Promise<Comment> =>
   requestJson<Comment>(`/api/community/posts/${postId}/comments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ authorNickname, content }),
+    body: JSON.stringify({ authorNickname, authorAptId: authorAptId ?? null, authorAptName: authorAptName ?? null, content }),
   })
+
+export const deletePost = async (postId: number, authorNickname: string): Promise<void> => {
+  const params = new URLSearchParams({ authorNickname })
+  return requestVoid(`/api/community/posts/${postId}?${params}`, { method: 'DELETE' })
+}
 
 export const deleteComment = async (commentId: number, authorNickname: string): Promise<void> => {
   const params = new URLSearchParams({ authorNickname })

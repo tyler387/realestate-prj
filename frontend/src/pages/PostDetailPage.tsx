@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import type { Post } from '../types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { PostContent } from '../components/features/post/PostContent'
 import { LikeButton } from '../components/features/post/LikeButton'
 import { CommentList } from '../components/features/post/CommentList'
@@ -12,14 +12,18 @@ import {
   fetchPostById,
   fetchComments,
   createComment,
+  deletePost,
   deleteComment,
   toggleLike,
 } from '../services/communityService'
 
 export const PostDetailPage = () => {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const status = useUserStore((s) => s.status)
   const nickname = useUserStore((s) => s.nickname)
+  const verifiedApartmentId   = useUserStore((s) => s.verifiedApartmentId)
+  const verifiedApartmentName = useUserStore((s) => s.verifiedApartmentName)
   const openAuthSheet = useUiStore((s) => s.openAuthSheet)
   const showToast = useUiStore((s) => s.showToast)
   const queryClient = useQueryClient()
@@ -27,8 +31,8 @@ export const PostDetailPage = () => {
   const postId = Number(id)
 
   const { data: post, isLoading, isError } = useQuery({
-    queryKey: ['community', 'post', postId],
-    queryFn: () => fetchPostById(postId),
+    queryKey: ['community', 'post', postId, nickname],
+    queryFn: () => fetchPostById(postId, nickname),
     enabled: Number.isFinite(postId),
     staleTime: 1000 * 60 * 5,
   })
@@ -39,32 +43,34 @@ export const PostDetailPage = () => {
     enabled: Number.isFinite(postId),
   })
 
-  const [liked, setLiked] = useState(false)
-  const [likeCount, setLikeCount] = useState(0)
-
-  useEffect(() => {
-    if (!post) return
-    setLiked(post.liked)
-    setLikeCount(post.likeCount)
-  }, [post])
-
   const likeMutation = useMutation({
     mutationFn: () => toggleLike(postId, nickname!),
     onSuccess: (data) => {
-      setLiked(data.liked)
-      setLikeCount(data.likeCount)
+      queryClient.setQueryData<Post>(['community', 'post', postId, nickname], (prev) =>
+        prev ? { ...prev, liked: data.liked, likeCount: data.likeCount } : prev
+      )
     },
     onError: () => showToast('좋아요 처리에 실패했습니다', 'error'),
   })
 
   const commentMutation = useMutation({
-    mutationFn: (content: string) => createComment(postId, nickname!, content),
+    mutationFn: (content: string) => createComment(postId, nickname!, content, verifiedApartmentId, verifiedApartmentName),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['community', 'comments', postId] }),
     onError: () => showToast('댓글 작성에 실패했습니다', 'error'),
   })
 
-  const deleteMutation = useMutation({
+  const deletePostMutation = useMutation({
+    mutationFn: () => deletePost(postId, nickname!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['community', 'posts'] })
+      showToast('게시글이 삭제되었어요', 'info')
+      navigate(-1)
+    },
+    onError: () => showToast('게시글 삭제에 실패했습니다', 'error'),
+  })
+
+  const deleteCommentMutation = useMutation({
     mutationFn: (commentId: number) => deleteComment(commentId, nickname!),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['community', 'comments', postId] }),
@@ -90,11 +96,17 @@ export const PostDetailPage = () => {
   const isVerified = status === 'VERIFIED'
   const sheetStatus = status === 'GUEST' ? 'GUEST' : 'MEMBER'
 
+  const isPostOwner = !!nickname && post.authorNickname === nickname
+
   return (
     <div className="flex flex-col pb-[72px]">
-      <PostContent post={post} />
+      <PostContent
+        post={post}
+        isOwner={isPostOwner}
+        onDelete={() => deletePostMutation.mutate()}
+      />
       <LikeButton
-        post={{ ...post, liked, likeCount }}
+        post={post}
         disabled={!isVerified}
         onDisabledClick={openAuthSheet}
         onToggle={() => {
@@ -104,7 +116,7 @@ export const PostDetailPage = () => {
       <CommentList
         comments={comments}
         currentNickname={nickname}
-        onDelete={(commentId) => deleteMutation.mutate(commentId)}
+        onDelete={(commentId) => deleteCommentMutation.mutate(commentId)}
       />
       {isVerified ? (
         <CommentInput onSubmit={(content) => commentMutation.mutate(content)} />

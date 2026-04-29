@@ -9,8 +9,9 @@ const categories = ['자유', '질문', '정보', '민원', '거래']
 export const WritePage = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const apartmentId = useUserStore((s) => s.apartmentId)
-  const apartmentName = useUserStore((s) => s.apartmentName)
+  const apartmentId           = useUserStore((s) => s.apartmentId)
+  const apartmentName         = useUserStore((s) => s.apartmentName)
+  const verifiedApartmentName = useUserStore((s) => s.verifiedApartmentName)
   const nickname = useUserStore((s) => s.nickname)
 
   const [category, setCategory] = useState('자유')
@@ -32,7 +33,7 @@ export const WritePage = () => {
         title: title.trim(),
         content: content.trim(),
         authorNickname: nickname ?? '익명',
-        complexName: apartmentName ?? '아파트',
+        complexName: verifiedApartmentName ?? apartmentName ?? '아파트',
       })
       await queryClient.invalidateQueries({ queryKey: ['community', 'posts'] })
       navigate('/')

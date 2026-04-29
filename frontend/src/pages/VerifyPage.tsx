@@ -3,36 +3,42 @@ import { ApartmentList } from '../components/features/verify/ApartmentList'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
+import { authApi } from '../services/authService'
 
 export const VerifyPage = () => {
   const [query, setQuery] = useState('')
+  const [isVerifying, setIsVerifying] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const setUser = useUserStore((s) => s.setUser)
-  const nickname = useUserStore((s) => s.nickname)
-  const userId = useUserStore((s) => s.userId)
   const showToast = useUiStore((s) => s.showToast)
 
-  const handleVerify = (apartment: { id: number; name: string }) => {
-    setUser({
-      userId: userId ?? 1,
-      nickname: nickname ?? '익명_7823',
-      status: 'VERIFIED',
-      apartmentId:           apartment.id,
-      apartmentName:         apartment.name,
-      verifiedApartmentId:   apartment.id,
-      verifiedApartmentName: apartment.name,
-    })
-
-    showToast(`${apartment.name} 인증 완료! ✓`, 'success')
-
-    const fromSignup = (location.state as { from?: string } | null)?.from === '/signup'
-    if (fromSignup) {
-      navigate('/signup/done', { replace: true })
-      return
+  const handleVerify = async (apartment: { id: number; name: string }) => {
+    if (isVerifying) return
+    setIsVerifying(true)
+    try {
+      const res = await authApi.verify(apartment.id, apartment.name)
+      setUser({
+        userId:                res.userId,
+        nickname:              res.nickname,
+        status:                'VERIFIED',
+        apartmentId:           res.apartmentId,
+        apartmentName:         res.apartmentName,
+        verifiedApartmentId:   res.apartmentId,
+        verifiedApartmentName: res.apartmentName,
+      })
+      showToast(`${apartment.name} 인증 완료! ✓`, 'success')
+      const fromSignup = (location.state as { from?: string } | null)?.from === '/signup'
+      if (fromSignup) {
+        navigate('/signup/done', { replace: true })
+        return
+      }
+      navigate(-1)
+    } catch {
+      showToast('인증에 실패했어요. 다시 시도해주세요.', 'error')
+    } finally {
+      setIsVerifying(false)
     }
-
-    navigate(-1)
   }
 
   return (

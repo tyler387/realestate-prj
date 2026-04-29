@@ -53,7 +53,7 @@ export const Header = () => {
             </svg>
           </button>
         ) : (
-          <span className="text-base font-bold text-blue-500">HB</span>
+          <button onClick={() => navigate('/')} className="text-base font-bold text-blue-500" aria-label="홈으로">HB</button>
         )}
       </div>
 

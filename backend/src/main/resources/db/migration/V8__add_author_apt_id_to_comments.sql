@@ -1,0 +1,1 @@
+ALTER TABLE comments ADD COLUMN IF NOT EXISTS author_apt_id BIGINT;

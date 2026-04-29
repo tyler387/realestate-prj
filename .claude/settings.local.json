@@ -18,7 +18,8 @@
       "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8081/api/auth/check-email?email=newuser@example.com\")",
       "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8081/api/auth/check-nickname?nickname=testuser\")",
       "Bash(./gradlew bootJar --no-daemon -q)",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "Bash(xargs grep *)"
     ]
   }
 }

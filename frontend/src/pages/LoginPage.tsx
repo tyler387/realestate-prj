@@ -38,11 +38,13 @@ export const LoginPage = () => {
       const res = await authApi.login(email, password)
       tokenStorage.set(res.token)
       setUser({
-        userId:        res.userId,
-        nickname:      res.nickname,
-        status:        res.status,
-        apartmentId:   res.apartmentId,
-        apartmentName: res.apartmentName,
+        userId:                res.userId,
+        nickname:              res.nickname,
+        status:                res.status,
+        apartmentId:           res.apartmentId,
+        apartmentName:         res.apartmentName,
+        verifiedApartmentId:   res.status === 'VERIFIED' ? res.apartmentId   : null,
+        verifiedApartmentName: res.status === 'VERIFIED' ? res.apartmentName : null,
       })
       const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo
       showToast('로그인 되었어요 👋', 'success')

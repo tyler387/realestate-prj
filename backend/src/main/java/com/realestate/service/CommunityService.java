@@ -76,11 +76,12 @@ public class CommunityService {
 
     // 조회 시 view_log 기록 (PRD §11.2)
     @Transactional
-    public CommunityPostDto getPost(Long id) {
+    public CommunityPostDto getPost(Long id, String nickname) {
         CommunityPost post = communityPostRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
         postViewLogRepository.save(PostViewLog.create(post.getId(), post.getAptId()));
-        return toDto(post);
+        boolean liked = nickname != null && postLikeLogRepository.existsByPostIdAndAuthorNickname(id, nickname);
+        return toDto(post, liked);
     }
 
     // 작성 시 keyword_logs 기록 (PRD §11.4)
@@ -161,9 +162,24 @@ public class CommunityService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "content is required");
         }
         Comment saved = commentRepository.save(
-                Comment.create(postId, request.authorNickname().trim(), request.content().trim()));
+                Comment.create(postId, request.authorNickname().trim(), request.content().trim(),
+                        request.authorAptId(), request.authorAptName()));
         communityPostRepository.incrementCommentCount(postId);
         return toCommentDto(saved);
+    }
+
+    // 게시글 삭제
+    @Transactional
+    public void deletePost(Long postId, String authorNickname) {
+        CommunityPost post = communityPostRepository.findById(postId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+        if (!post.getAuthorNickname().equals(authorNickname)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot delete this post");
+        }
+        commentRepository.deleteByPostId(postId);
+        postLikeLogRepository.deleteByPostId(postId);
+        postStatsRepository.deleteById(postId);
+        communityPostRepository.delete(post);
     }
 
     // 댓글 삭제
@@ -222,12 +238,18 @@ public class CommunityService {
                 comment.getId(),
                 comment.getPostId(),
                 comment.getAuthorNickname(),
+                comment.getAuthorAptId(),
+                comment.getAuthorAptName(),
                 comment.getContent(),
                 toRelativeTime(comment.getCreatedAt())
         );
     }
 
     private CommunityPostDto toDto(CommunityPost post) {
+        return toDto(post, false);
+    }
+
+    private CommunityPostDto toDto(CommunityPost post, boolean liked) {
         return new CommunityPostDto(
                 post.getId(),
                 post.getAptId(),
@@ -239,7 +261,7 @@ public class CommunityService {
                 toRelativeTime(post.getCreatedAt()),
                 post.getLikeCount(),
                 post.getCommentCount(),
-                false
+                liked
         );
     }
 
