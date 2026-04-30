@@ -119,6 +119,7 @@ export const LoginPage = () => {
 
       <button
         onClick={() => {
+          // 카카오 인증 페이지로 이동: 성공 시 /auth/kakao/callback 으로 돌아온다.
           const redirectUri = `${window.location.origin}/auth/kakao/callback`
           window.location.href =
             `https://kauth.kakao.com/oauth/authorize?client_id=${import.meta.env.VITE_KAKAO_REST_API_KEY}` +

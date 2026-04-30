@@ -11,6 +11,7 @@ export const ResetPasswordPage = () => {
   const location = useLocation()
   const showToast = useUiStore((s) => s.showToast)
 
+  // forgot-password 페이지에서 전달한 이메일을 이어받아 같은 사용자 흐름으로 진행한다.
   const emailFromState = (location.state as { email?: string } | null)?.email ?? ''
   const [email] = useState(emailFromState)
 
@@ -40,6 +41,7 @@ export const ResetPasswordPage = () => {
     newPassword.length >= 8 && newPassword === confirmPassword
 
   const handleVerifyCode = async () => {
+    // 1단계: 메일로 받은 6자리 코드를 서버에서 검증
     if (!isCodeValid || isLoading) return
     setServerError('')
     setIsLoading(true)
@@ -54,6 +56,7 @@ export const ResetPasswordPage = () => {
   }
 
   const handleConfirmReset = async () => {
+    // 2단계: 새 비밀번호를 저장하고 로그인 페이지로 이동
     if (!isPasswordSubmitEnabled || isLoading) return
     setServerError('')
     setIsLoading(true)

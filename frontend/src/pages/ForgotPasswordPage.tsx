@@ -22,6 +22,7 @@ export const ForgotPasswordPage = () => {
   const isSubmitEnabled = emailRegex.test(email)
 
   const handleSubmit = async () => {
+    // 비밀번호 재설정의 시작 단계: 이메일로 인증코드 발송 요청
     if (!isSubmitEnabled || isLoading) return
     setServerError('')
     setIsLoading(true)

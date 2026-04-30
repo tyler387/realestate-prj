@@ -12,6 +12,8 @@ export const KakaoCallbackPage = () => {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    // 카카오 인증이 끝나면 code가 쿼리스트링으로 돌아온다.
+    // 이 code를 백엔드에 전달하면, 백엔드가 카카오와 통신해 최종 로그인 처리한다.
     const code = searchParams.get('code')
     if (!code) {
       setError('카카오 인증 코드가 없어요. 다시 시도해주세요.')
@@ -21,6 +23,7 @@ export const KakaoCallbackPage = () => {
     const redirectUri = `${window.location.origin}/auth/kakao/callback`
     authApi.kakaoLogin(code, redirectUri)
       .then((res) => {
+        // 백엔드가 발급한 JWT/사용자정보를 저장하면 앱이 로그인 상태로 전환된다.
         tokenStorage.set(res.token)
         setUser({
           userId:                res.userId,

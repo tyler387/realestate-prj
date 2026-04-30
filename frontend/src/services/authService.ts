@@ -17,6 +17,8 @@ export const tokenStorage = {
 }
 
 const authRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  // 모든 인증 API 요청이 이 함수를 공통 사용한다.
+  // 실패 시 서버 메시지를 최대한 그대로 화면에 전달해 사용자가 이유를 알 수 있게 한다.
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {

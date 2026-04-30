@@ -16,6 +16,7 @@ public class OAuthController {
 
     private final KakaoOAuthService kakaoOAuthService;
 
+    // 프론트가 전달한 카카오 인가코드를 받아 실제 로그인/회원생성 처리를 위임
     @PostMapping("/kakao")
     public AuthResponse kakaoLogin(@RequestBody KakaoLoginRequest req) {
         return kakaoOAuthService.kakaoLogin(req);

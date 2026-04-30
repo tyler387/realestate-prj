@@ -67,18 +67,21 @@ public class AuthController {
     @PostMapping("/password-reset/request")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void passwordResetRequest(@RequestBody PasswordResetRequestDto dto) {
+        // 1) 인증코드 발급/메일 발송
         passwordResetService.requestReset(dto);
     }
 
     @PostMapping("/password-reset/verify")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void passwordResetVerify(@RequestBody PasswordResetVerifyDto dto) {
+        // 2) 사용자가 입력한 인증코드 검증
         passwordResetService.verifyToken(dto);
     }
 
     @PostMapping("/password-reset/confirm")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void passwordResetConfirm(@RequestBody PasswordResetConfirmDto dto) {
+        // 3) 새 비밀번호로 최종 변경
         passwordResetService.confirmReset(dto);
     }
 }

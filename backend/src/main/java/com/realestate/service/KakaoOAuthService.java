@@ -41,14 +41,18 @@ public class KakaoOAuthService {
 
     @Transactional
     public AuthResponse kakaoLogin(KakaoLoginRequest req) {
+        // Step 1) 프론트가 전달한 인가코드(code)를 카카오 access token으로 교환
         String accessToken = getKakaoAccessToken(req.code(), req.redirectUri());
+        // Step 2) access token으로 카카오 사용자 기본정보 조회
         KakaoUserInfo kakaoUser = getKakaoUserInfo(accessToken);
 
+        // Step 3) 이미 연동된 사용자는 신규 생성 없이 바로 로그인
         Optional<User> existingUser = userRepository.findByOauthProviderAndOauthId("KAKAO", kakaoUser.id());
         if (existingUser.isPresent()) {
             return toAuthResponse(existingUser.get());
         }
 
+        // Step 4) 같은 이메일의 일반가입 계정이 있으면 자동 병합하지 않고 충돌 안내
         if (kakaoUser.email() != null) {
             userRepository.findByEmail(kakaoUser.email()).ifPresent(u -> {
                 if (u.getOauthProvider() == null) {
@@ -61,6 +65,7 @@ public class KakaoOAuthService {
         String email = kakaoUser.email() != null
                 ? kakaoUser.email()
                 : "kakao_" + kakaoUser.id() + "@noreply.local";
+        // Step 5) 신규 사용자 생성 후 JWT 발급
         String nickname = generateUniqueNickname(kakaoUser.nickname());
         User user = User.createOAuthUser(email, nickname, "KAKAO", kakaoUser.id());
         userRepository.save(user);
@@ -69,6 +74,7 @@ public class KakaoOAuthService {
 
     @SuppressWarnings("unchecked")
     private String getKakaoAccessToken(String code, String redirectUri) {
+        // 카카오 OAuth 토큰 발급 규격에 맞는 form-data 구성
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "authorization_code");
         formData.add("client_id", restApiKey);
@@ -98,6 +104,7 @@ public class KakaoOAuthService {
 
     @SuppressWarnings("unchecked")
     private KakaoUserInfo getKakaoUserInfo(String accessToken) {
+        // 사용자 식별/프로필 정보는 kakao_account/profile 블록에 들어있음
         Map<String, Object> response = webClient.get()
                 .uri(userInfoUrl)
                 .header("Authorization", "Bearer " + accessToken)

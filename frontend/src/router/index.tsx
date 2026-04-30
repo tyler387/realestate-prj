@@ -48,8 +48,10 @@ export const router = createBrowserRouter([
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
       { path: '/signup/done', element: <SignupDonePage /> },
+      // 비밀번호 찾기/재설정 플로우
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
+      // 카카오 인증 완료 후 돌아오는 콜백 경로
       { path: '/auth/kakao/callback', element: <KakaoCallbackPage /> },
     ],
   },
