@@ -158,6 +158,25 @@ export const SignupPage = () => {
               <p className="mt-1 text-xs text-red-500">올바른 이메일 형식이 아니에요</p>
             )}
             {isUsedEmail && <p className="mt-1 text-xs text-red-500">이미 사용 중인 이메일이에요</p>}
+
+            <div className="my-5 flex items-center gap-3 text-sm text-gray-400">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span>또는</span>
+              <div className="h-px flex-1 bg-gray-200" />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const redirectUri = `${window.location.origin}/auth/kakao/callback`
+                window.location.href =
+                  `https://kauth.kakao.com/oauth/authorize?client_id=${import.meta.env.VITE_KAKAO_REST_API_KEY}` +
+                  `&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`
+              }}
+              className="h-12 w-full rounded-xl bg-[#FEE500] text-sm font-medium text-[#191919]"
+            >
+              카카오로 시작하기
+            </button>
           </section>
         )}
 

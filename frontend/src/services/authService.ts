@@ -5,6 +5,7 @@ export type AuthResponse = {
   status: 'MEMBER' | 'VERIFIED'
   apartmentId: number | null
   apartmentName: string | null
+  oauthProvider?: string | null
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
@@ -26,7 +27,12 @@ const authRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
   if (response.status === 204) return undefined as T
   if (!response.ok) {
     const text = await response.text()
-    throw new Error(text || '요청에 실패했습니다.')
+    let message = '요청에 실패했습니다.'
+    try {
+      const json = JSON.parse(text)
+      message = json.message || json.error || message
+    } catch {}
+    throw new Error(message)
   }
   return response.json() as Promise<T>
 }
@@ -69,5 +75,29 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ apartmentId, apartmentName }),
       headers: { Authorization: `Bearer ${tokenStorage.get() ?? ''}` },
+    }),
+
+  requestPasswordReset: (email: string) =>
+    authRequest<void>('/api/auth/password-reset/request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  verifyResetToken: (email: string, token: string) =>
+    authRequest<void>('/api/auth/password-reset/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, token }),
+    }),
+
+  confirmPasswordReset: (email: string, token: string, newPassword: string) =>
+    authRequest<void>('/api/auth/password-reset/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ email, token, newPassword }),
+    }),
+
+  kakaoLogin: (code: string, redirectUri: string) =>
+    authRequest<AuthResponse>('/api/auth/oauth/kakao', {
+      method: 'POST',
+      body: JSON.stringify({ code, redirectUri }),
     }),
 }

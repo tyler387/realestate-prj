@@ -12,6 +12,8 @@ services:
       PUBLIC_DATA_API_KEY: ${PUBLIC_DATA_API_KEY:-dummy}
       KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-dummy}
       PORT: ${PORT:-8081}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     ports:
       - "8081:8081"
     restart: unless-stopped

@@ -6,5 +6,6 @@ public record AuthResponse(
         String nickname,
         String status,
         Long apartmentId,
-        String apartmentName
+        String apartmentName,
+        String oauthProvider
 ) {}

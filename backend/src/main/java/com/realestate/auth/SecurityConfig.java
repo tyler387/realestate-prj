@@ -54,6 +54,8 @@ public class SecurityConfig {
                                 "/api/auth/check-email",
                                 "/api/auth/check-nickname"
                         ).permitAll()
+                        .requestMatchers("/api/auth/password-reset/**").permitAll()
+                        .requestMatchers("/api/auth/oauth/**").permitAll()
                         // 인증 필요
                         .requestMatchers("/api/auth/me").authenticated()
                         // 커뮤니티 / 조회 API - 하위 호환 (nickname 기반 유지)

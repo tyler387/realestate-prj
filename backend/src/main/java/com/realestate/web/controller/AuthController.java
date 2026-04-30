@@ -2,8 +2,12 @@ package com.realestate.web.controller;
 
 import com.realestate.domain.entity.User;
 import com.realestate.service.AuthService;
+import com.realestate.service.PasswordResetService;
 import com.realestate.web.dto.AuthResponse;
 import com.realestate.web.dto.LoginRequest;
+import com.realestate.web.dto.PasswordResetConfirmDto;
+import com.realestate.web.dto.PasswordResetRequestDto;
+import com.realestate.web.dto.PasswordResetVerifyDto;
 import com.realestate.web.dto.SignupRequest;
 import com.realestate.web.dto.VerifyRequest;
 import jakarta.validation.Valid;
@@ -20,6 +24,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
@@ -57,5 +62,23 @@ public class AuthController {
     @GetMapping("/check-nickname")
     public Map<String, Boolean> checkNickname(@RequestParam String nickname) {
         return Map.of("available", authService.isNicknameAvailable(nickname));
+    }
+
+    @PostMapping("/password-reset/request")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void passwordResetRequest(@RequestBody PasswordResetRequestDto dto) {
+        passwordResetService.requestReset(dto);
+    }
+
+    @PostMapping("/password-reset/verify")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void passwordResetVerify(@RequestBody PasswordResetVerifyDto dto) {
+        passwordResetService.verifyToken(dto);
+    }
+
+    @PostMapping("/password-reset/confirm")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void passwordResetConfirm(@RequestBody PasswordResetConfirmDto dto) {
+        passwordResetService.confirmReset(dto);
     }
 }

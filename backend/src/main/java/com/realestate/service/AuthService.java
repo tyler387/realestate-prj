@@ -51,6 +51,9 @@ public class AuthService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않아요"));
 
+        if (user.getPasswordHash() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "카카오 계정으로 로그인하세요");
+        }
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않아요");
@@ -92,7 +95,8 @@ public class AuthService {
                 user.getNickname(),
                 user.getStatus().name(),
                 user.getApartmentId(),
-                user.getApartmentName()
+                user.getApartmentName(),
+                user.getOauthProvider()
         );
     }
 }

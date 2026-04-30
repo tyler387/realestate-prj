@@ -12,6 +12,9 @@ import { ApartmentTradePage } from '../pages/ApartmentTradePage'
 import { LoginPage } from '../pages/LoginPage'
 import { SignupPage } from '../pages/SignupPage'
 import { SignupDonePage } from '../pages/SignupDonePage'
+import { ForgotPasswordPage } from '../pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '../pages/ResetPasswordPage'
+import { KakaoCallbackPage } from '../pages/KakaoCallbackPage'
 import { MemberRoute } from './MemberRoute'
 import { VerifiedRoute } from './VerifiedRoute'
 
@@ -45,6 +48,9 @@ export const router = createBrowserRouter([
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
       { path: '/signup/done', element: <SignupDonePage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/reset-password', element: <ResetPasswordPage /> },
+      { path: '/auth/kakao/callback', element: <KakaoCallbackPage /> },
     ],
   },
 ])

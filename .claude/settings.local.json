@@ -19,7 +19,12 @@
       "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8081/api/auth/check-nickname?nickname=testuser\")",
       "Bash(./gradlew bootJar --no-daemon -q)",
       "PowerShell(Stop-Process *)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(netstat -ano)",
+      "Bash(tasklist /FI \"PID eq 37252\")",
+      "PowerShell(Get-Process -Id 37252)",
+      "PowerShell(Get-Process | Where-Object { $_.Id -eq 37252 })",
+      "WebFetch(domain:developers.kakao.com)"
     ]
   }
 }

@@ -105,7 +105,7 @@ export const LoginPage = () => {
       </button>
 
       <button
-        onClick={() => showToast('준비 중인 기능이에요', 'info')}
+        onClick={() => navigate('/forgot-password')}
         className="mt-4 text-center text-sm text-gray-500"
       >
         비밀번호를 잊으셨나요?
@@ -118,7 +118,12 @@ export const LoginPage = () => {
       </div>
 
       <button
-        onClick={() => showToast('준비 중인 기능이에요', 'info')}
+        onClick={() => {
+          const redirectUri = `${window.location.origin}/auth/kakao/callback`
+          window.location.href =
+            `https://kauth.kakao.com/oauth/authorize?client_id=${import.meta.env.VITE_KAKAO_REST_API_KEY}` +
+            `&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`
+        }}
         className="h-12 w-full rounded-xl bg-[#FEE500] text-sm font-medium text-[#191919]"
       >
         카카오로 시작하기

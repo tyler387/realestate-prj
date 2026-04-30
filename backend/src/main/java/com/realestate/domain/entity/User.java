@@ -21,8 +21,14 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
+
+    @Column(name = "oauth_provider", length = 20)
+    private String oauthProvider;
+
+    @Column(name = "oauth_id", length = 100)
+    private String oauthId;
 
     @Column(nullable = false, unique = true)
     private String nickname;
@@ -56,6 +62,16 @@ public class User {
         this.marketingAgreed = marketingAgreed;
     }
 
+    public static User createOAuthUser(String email, String nickname, String oauthProvider, String oauthId) {
+        User user = new User();
+        user.email = email;
+        user.nickname = nickname;
+        user.oauthProvider = oauthProvider;
+        user.oauthId = oauthId;
+        user.marketingAgreed = false;
+        return user;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -71,5 +87,9 @@ public class User {
         this.status = UserStatus.VERIFIED;
         this.apartmentId = apartmentId;
         this.apartmentName = apartmentName;
+    }
+
+    public void updatePassword(String encodedPassword) {
+        this.passwordHash = encodedPassword;
     }
 }
