@@ -15,6 +15,7 @@ import { SignupDonePage } from '../pages/SignupDonePage'
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '../pages/ResetPasswordPage'
 import { KakaoCallbackPage } from '../pages/KakaoCallbackPage'
+import { ChangePasswordPage } from '../pages/ChangePasswordPage'
 import { MemberRoute } from './MemberRoute'
 import { VerifiedRoute } from './VerifiedRoute'
 
@@ -51,6 +52,15 @@ export const router = createBrowserRouter([
       // 비밀번호 찾기/재설정 플로우
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
+      // 비밀번호 변경 (로그인 필수)
+      {
+        path: '/change-password',
+        element: (
+          <MemberRoute>
+            <ChangePasswordPage />
+          </MemberRoute>
+        ),
+      },
       // 카카오 인증 완료 후 돌아오는 콜백 경로
       { path: '/auth/kakao/callback', element: <KakaoCallbackPage /> },
     ],

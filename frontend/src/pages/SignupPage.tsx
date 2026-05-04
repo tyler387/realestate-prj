@@ -124,6 +124,7 @@ export const SignupPage = () => {
           status:        'MEMBER',
           apartmentId:   null,
           apartmentName: null,
+          oauthProvider: null,   // 이메일 회원가입은 소셜 계정 아님
         })
         setStep(5)
       } catch (e) {

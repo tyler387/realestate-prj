@@ -94,6 +94,7 @@ export const ResetPasswordPage = () => {
             type="text"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleVerifyCode() }}
             inputMode="numeric"
             maxLength={6}
             placeholder="6자리 숫자"
@@ -148,6 +149,7 @@ export const ResetPasswordPage = () => {
             type={showPassword ? 'text' : 'password'}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmReset() }}
             autoComplete="new-password"
             placeholder="비밀번호를 다시 입력하세요"
             className={`mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none ${
@@ -165,6 +167,14 @@ export const ResetPasswordPage = () => {
             {isLoading
               ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
               : '비밀번호 변경'}
+          </button>
+
+          {/* 코드 재입력이 필요한 경우(만료 등) 이전 단계로 돌아갈 수 있게 한다 */}
+          <button
+            onClick={() => { setStep('code'); setServerError('') }}
+            className="mt-4 text-center text-sm text-gray-500"
+          >
+            인증코드 다시 입력하기
           </button>
         </>
       )}

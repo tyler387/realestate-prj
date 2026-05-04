@@ -51,6 +51,7 @@ export const ForgotPasswordPage = () => {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         onBlur={() => setEmailTouched(true)}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
         autoComplete="email"
         inputMode="email"
         placeholder="이메일을 입력하세요"

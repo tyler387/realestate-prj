@@ -33,6 +33,7 @@ export const KakaoCallbackPage = () => {
           apartmentName:         res.apartmentName,
           verifiedApartmentId:   res.status === 'VERIFIED' ? res.apartmentId   : null,
           verifiedApartmentName: res.status === 'VERIFIED' ? res.apartmentName : null,
+          oauthProvider:         res.oauthProvider ?? null,
         })
         showToast('카카오로 로그인되었어요 👋', 'success')
         navigate('/', { replace: true })

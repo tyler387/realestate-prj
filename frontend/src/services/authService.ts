@@ -102,4 +102,19 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ code, redirectUri }),
     }),
+
+  // 현재 비밀번호를 검증한 뒤 새 비밀번호로 변경 (JWT 필요)
+  changePassword: (currentPassword: string, newPassword: string) =>
+    authRequest<void>('/api/auth/password', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${tokenStorage.get() ?? ''}` },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+
+  // 게시글·댓글을 익명 처리한 후 계정을 삭제 (JWT 필요)
+  deleteAccount: () =>
+    authRequest<void>('/api/auth/account', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${tokenStorage.get() ?? ''}` },
+    }),
 }

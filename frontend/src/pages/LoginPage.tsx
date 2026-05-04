@@ -45,6 +45,7 @@ export const LoginPage = () => {
         apartmentName:         res.apartmentName,
         verifiedApartmentId:   res.status === 'VERIFIED' ? res.apartmentId   : null,
         verifiedApartmentName: res.status === 'VERIFIED' ? res.apartmentName : null,
+        oauthProvider:         res.oauthProvider ?? null,
       })
       const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo
       showToast('로그인 되었어요 👋', 'success')

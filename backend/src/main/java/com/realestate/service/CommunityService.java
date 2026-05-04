@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -110,26 +111,20 @@ public class CommunityService {
         return toDto(created);
     }
 
-    // stats 테이블 기반 — score(좋아요*2+댓글) 내림차순, 24h → 7d fallback
+    // posts 테이블 기반 — score(좋아요*2+댓글) 내림차순 Top 5
     @Transactional(readOnly = true)
     public List<CommunityPostDto> getPopularPosts(Long aptId) {
         validateAptId(aptId);
-        List<Object[]> rows = postStatsRepository.findPopularPosts(aptId, 1);
-        if (rows.size() < 3) {
-            rows = postStatsRepository.findPopularPosts(aptId, 7);
-        }
-        return rows.stream().map(this::toDtoFromStats).toList();
+        return communityPostRepository.findPopularByAptId(aptId, PageRequest.of(0, 5))
+                .stream().map(this::toDto).toList();
     }
 
-    // stats 테이블 기반 — 댓글 수 내림차순, 24h → 7d fallback
+    // posts 테이블 기반 — 댓글 수 내림차순 Top 5
     @Transactional(readOnly = true)
     public List<CommunityPostDto> getMostCommentedPosts(Long aptId) {
         validateAptId(aptId);
-        List<Object[]> rows = postStatsRepository.findMostCommentedPosts(aptId, 1);
-        if (rows.size() < 3) {
-            rows = postStatsRepository.findMostCommentedPosts(aptId, 7);
-        }
-        return rows.stream().map(this::toDtoFromStats).toList();
+        return communityPostRepository.findMostCommentedByAptId(aptId, PageRequest.of(0, 5))
+                .stream().map(this::toDto).toList();
     }
 
     // keyword_stats 기반 Top 10, 데이터 없으면 텍스트 파싱 fallback (PRD §10.3)
@@ -262,27 +257,6 @@ public class CommunityService {
                 post.getLikeCount(),
                 post.getCommentCount(),
                 liked
-        );
-    }
-
-    // native query Object[] → CommunityPostDto
-    // 컬럼 순서: id, apt_id, category, title, content, author_nickname, complex_name, created_at, like_count, comment_count
-    private CommunityPostDto toDtoFromStats(Object[] row) {
-        LocalDateTime createdAt = row[7] instanceof java.sql.Timestamp ts
-                ? ts.toLocalDateTime()
-                : (LocalDateTime) row[7];
-        return new CommunityPostDto(
-                ((Number) row[0]).longValue(),
-                ((Number) row[1]).longValue(),
-                (String) row[2],
-                (String) row[3],
-                (String) row[4],
-                (String) row[5],
-                (String) row[6],
-                toRelativeTime(createdAt),
-                ((Number) row[8]).intValue(),
-                ((Number) row[9]).intValue(),
-                false
         );
     }
 

@@ -11,6 +11,7 @@ type UserState = {
   apartmentName:          string | null
   verifiedApartmentId:    number | null
   verifiedApartmentName:  string | null
+  oauthProvider:          string | null   // 'KAKAO' 등 소셜 로그인 제공자
   setUser: (user: Partial<Omit<UserState, 'setUser' | 'logout'>>) => void
   logout:  () => void
 }
@@ -23,6 +24,7 @@ const initialState = {
   apartmentName:          null,
   verifiedApartmentId:    null,
   verifiedApartmentName:  null,
+  oauthProvider:          null,
 }
 
 export const useUserStore = create<UserState>()(
@@ -45,6 +47,7 @@ export const useUserStore = create<UserState>()(
         apartmentName:         state.apartmentName,
         verifiedApartmentId:   state.verifiedApartmentId,
         verifiedApartmentName: state.verifiedApartmentName,
+        oauthProvider:         state.oauthProvider,
       }) as UserState,
     }
   )
