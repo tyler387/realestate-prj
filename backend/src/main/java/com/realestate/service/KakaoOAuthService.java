@@ -109,6 +109,10 @@ public class KakaoOAuthService {
                 .uri(userInfoUrl)
                 .header("Authorization", "Bearer " + accessToken)
                 .retrieve()
+                .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
+                        clientResponse -> clientResponse.bodyToMono(String.class)
+                                .map(body -> new ResponseStatusException(
+                                        HttpStatus.BAD_GATEWAY, "카카오 사용자 정보 오류: " + body)))
                 .bodyToMono(Map.class)
                 .block();
 
@@ -136,6 +140,8 @@ public class KakaoOAuthService {
         if (base.length() > 8) base = base.substring(0, 8);
         if (!userRepository.existsByNickname(base)) return base;
 
+        // 동일 닉네임 충돌 시 숫자 접미사를 붙여 재시도한다.
+        // 20회 안에 충돌이 해소되지 않으면 500을 던져 무한 루프를 방지한다.
         for (int i = 0; i < 20; i++) {
             String candidate = base + String.format("%02d", (int) (Math.random() * 100));
             if (candidate.length() > 10) candidate = candidate.substring(0, 10);

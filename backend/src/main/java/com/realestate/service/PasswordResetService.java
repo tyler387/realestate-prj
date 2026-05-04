@@ -29,7 +29,6 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
 
-    private static final int CODE_LENGTH = 6;
     private static final int EXPIRES_MINUTES = 15;
 
     @Transactional
@@ -37,7 +36,7 @@ public class PasswordResetService {
         User user = userRepository.findByEmail(dto.email())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "등록되지 않은 이메일이에요"));
 
-        // 기존 미사용 토큰 삭제
+        // 재요청 시 이전 토큰(사용 여부 무관)을 전부 제거하고 새 토큰 발급
         tokenRepository.deleteByUserId(user.getId());
 
         String code = generateCode();
@@ -52,17 +51,7 @@ public class PasswordResetService {
     public void verifyToken(PasswordResetVerifyDto dto) {
         User user = userRepository.findByEmail(dto.email())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "등록되지 않은 이메일이에요"));
-
-        PasswordResetToken token = tokenRepository
-                .findTopByUserIdAndUsedFalseOrderByCreatedAtDesc(user.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "인증코드가 유효하지 않아요"));
-
-        if (token.isExpired()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "인증코드가 만료되었어요. 다시 요청해주세요");
-        }
-        if (!token.getToken().equals(dto.token())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "인증코드가 올바르지 않아요");
-        }
+        resolveToken(user.getId(), dto.token());
     }
 
     @Transactional
@@ -74,21 +63,26 @@ public class PasswordResetService {
         User user = userRepository.findByEmail(dto.email())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "등록되지 않은 이메일이에요"));
 
+        // API가 stateless이므로 verify 단계와 세션 연결이 없다 — 코드를 다시 검증해야 한다
+        PasswordResetToken token = resolveToken(user.getId(), dto.token());
+
+        user.updatePassword(passwordEncoder.encode(dto.newPassword()));
+        token.markUsed();
+    }
+
+    /** 미사용·미만료 토큰을 조회하고 코드가 일치하면 반환, 아니면 예외를 던진다. */
+    private PasswordResetToken resolveToken(Long userId, String code) {
         PasswordResetToken token = tokenRepository
-                .findTopByUserIdAndUsedFalseOrderByCreatedAtDesc(user.getId())
+                .findTopByUserIdAndUsedFalseOrderByCreatedAtDesc(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "인증코드가 유효하지 않아요"));
 
         if (token.isExpired()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "인증코드가 만료되었어요. 다시 요청해주세요");
         }
-        if (!token.getToken().equals(dto.token())) {
+        if (!token.getToken().equals(code)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "인증코드가 올바르지 않아요");
         }
-
-        User managed = userRepository.findById(user.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없어요"));
-        managed.updatePassword(passwordEncoder.encode(dto.newPassword()));
-        token.markUsed();
+        return token;
     }
 
     private String generateCode() {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ServiceLogo } from '../components/features/auth/ServiceLogo'
 import { authApi } from '../services/authService'
@@ -14,6 +14,12 @@ export const ResetPasswordPage = () => {
   // forgot-password 페이지에서 전달한 이메일을 이어받아 같은 사용자 흐름으로 진행한다.
   const emailFromState = (location.state as { email?: string } | null)?.email ?? ''
   const [email] = useState(emailFromState)
+
+  // 직접 URL 진입 시 이메일이 없으므로 앞 단계로 돌려보낸다.
+  useEffect(() => {
+    if (!emailFromState) navigate('/forgot-password', { replace: true })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [step, setStep] = useState<Step>('code')
   const [code, setCode] = useState('')
