@@ -16,8 +16,13 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -39,25 +44,28 @@ public class KakaoOAuthService {
     @Value("${kakao.user-info-url}")
     private String userInfoUrl;
 
+    @Value("${kakao.allowed-redirect-uris:http://localhost:5173/auth/kakao/callback}")
+    private String allowedRedirectUris;
+
     @Transactional
     public AuthResponse kakaoLogin(KakaoLoginRequest req) {
-        // Step 1) 프론트가 전달한 인가코드(code)를 카카오 access token으로 교환
-        String accessToken = getKakaoAccessToken(req.code(), req.redirectUri());
-        // Step 2) access token으로 카카오 사용자 기본정보 조회
+        String validatedRedirectUri = validateRedirectUri(req.redirectUri());
+
+        String accessToken = getKakaoAccessToken(req.code(), validatedRedirectUri);
         KakaoUserInfo kakaoUser = getKakaoUserInfo(accessToken);
 
-        // Step 3) 이미 연동된 사용자는 신규 생성 없이 바로 로그인
         Optional<User> existingUser = userRepository.findByOauthProviderAndOauthId("KAKAO", kakaoUser.id());
         if (existingUser.isPresent()) {
             return toAuthResponse(existingUser.get());
         }
 
-        // Step 4) 같은 이메일의 일반가입 계정이 있으면 자동 병합하지 않고 충돌 안내
         if (kakaoUser.email() != null) {
             userRepository.findByEmail(kakaoUser.email()).ifPresent(u -> {
                 if (u.getOauthProvider() == null) {
                     throw new ResponseStatusException(
-                            HttpStatus.CONFLICT, "이미 이메일로 가입된 계정이에요. 이메일로 로그인해주세요.");
+                            HttpStatus.CONFLICT,
+                            "An account with this email already exists. Please login with email/password."
+                    );
                 }
             });
         }
@@ -65,7 +73,7 @@ public class KakaoOAuthService {
         String email = kakaoUser.email() != null
                 ? kakaoUser.email()
                 : "kakao_" + kakaoUser.id() + "@noreply.local";
-        // Step 5) 신규 사용자 생성 후 JWT 발급
+
         String nickname = generateUniqueNickname(kakaoUser.nickname());
         User user = User.createOAuthUser(email, nickname, "KAKAO", kakaoUser.id());
         userRepository.save(user);
@@ -74,7 +82,6 @@ public class KakaoOAuthService {
 
     @SuppressWarnings("unchecked")
     private String getKakaoAccessToken(String code, String redirectUri) {
-        // 카카오 OAuth 토큰 발급 규격에 맞는 form-data 구성
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("grant_type", "authorization_code");
         formData.add("client_id", restApiKey);
@@ -92,19 +99,18 @@ public class KakaoOAuthService {
                 .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
                         clientResponse -> clientResponse.bodyToMono(String.class)
                                 .map(body -> new ResponseStatusException(
-                                        HttpStatus.BAD_GATEWAY, "카카오 토큰 오류: " + body)))
+                                        HttpStatus.BAD_GATEWAY, "Kakao token error: " + body)))
                 .bodyToMono(Map.class)
                 .block();
 
         if (response == null || !response.containsKey("access_token")) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "카카오 토큰 발급에 실패했어요");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to issue Kakao access token");
         }
         return (String) response.get("access_token");
     }
 
     @SuppressWarnings("unchecked")
     private KakaoUserInfo getKakaoUserInfo(String accessToken) {
-        // 사용자 식별/프로필 정보는 kakao_account/profile 블록에 들어있음
         Map<String, Object> response = webClient.get()
                 .uri(userInfoUrl)
                 .header("Authorization", "Bearer " + accessToken)
@@ -112,12 +118,12 @@ public class KakaoOAuthService {
                 .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
                         clientResponse -> clientResponse.bodyToMono(String.class)
                                 .map(body -> new ResponseStatusException(
-                                        HttpStatus.BAD_GATEWAY, "카카오 사용자 정보 오류: " + body)))
+                                        HttpStatus.BAD_GATEWAY, "Kakao user info error: " + body)))
                 .bodyToMono(Map.class)
                 .block();
 
         if (response == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "카카오 사용자 정보 조회에 실패했어요");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to fetch Kakao user info");
         }
 
         String kakaoId = String.valueOf(response.get("id"));
@@ -136,18 +142,16 @@ public class KakaoOAuthService {
     }
 
     private String generateUniqueNickname(String base) {
-        if (base == null || base.isBlank()) base = "카카오유저";
+        if (base == null || base.isBlank()) base = "kakaoUser";
         if (base.length() > 8) base = base.substring(0, 8);
         if (!userRepository.existsByNickname(base)) return base;
 
-        // 동일 닉네임 충돌 시 숫자 접미사를 붙여 재시도한다.
-        // 20회 안에 충돌이 해소되지 않으면 500을 던져 무한 루프를 방지한다.
         for (int i = 0; i < 20; i++) {
             String candidate = base + String.format("%02d", (int) (Math.random() * 100));
             if (candidate.length() > 10) candidate = candidate.substring(0, 10);
             if (!userRepository.existsByNickname(candidate)) return candidate;
         }
-        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "닉네임 생성에 실패했어요. 다시 시도해주세요.");
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate unique nickname");
     }
 
     private AuthResponse toAuthResponse(User user) {
@@ -160,6 +164,52 @@ public class KakaoOAuthService {
                 user.getApartmentName(),
                 user.getOauthProvider()
         );
+    }
+
+    private String validateRedirectUri(String redirectUri) {
+        String normalized = normalizeRedirectUri(redirectUri);
+        Set<String> allowed = parseAllowedRedirectUris();
+        if (!allowed.contains(normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid redirect URI");
+        }
+        return normalized;
+    }
+
+    private Set<String> parseAllowedRedirectUris() {
+        Set<String> allowed = new HashSet<>();
+        Arrays.stream(allowedRedirectUris.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(this::normalizeRedirectUri)
+                .forEach(allowed::add);
+        return allowed;
+    }
+
+    private String normalizeRedirectUri(String value) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "redirectUri is required");
+        }
+        try {
+            URI uri = new URI(value.trim());
+            if (!uri.isAbsolute()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid redirect URI");
+            }
+            if (uri.getQuery() != null || uri.getFragment() != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid redirect URI");
+            }
+            URI normalized = new URI(
+                    uri.getScheme().toLowerCase(),
+                    uri.getUserInfo(),
+                    uri.getHost() == null ? null : uri.getHost().toLowerCase(),
+                    uri.getPort(),
+                    uri.getPath(),
+                    null,
+                    null
+            );
+            return normalized.toString();
+        } catch (URISyntaxException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid redirect URI");
+        }
     }
 
     record KakaoUserInfo(String id, String email, String nickname) {}

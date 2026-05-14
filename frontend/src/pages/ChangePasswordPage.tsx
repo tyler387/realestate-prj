@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ServiceLogo } from '../components/features/auth/ServiceLogo'
 import { authApi } from '../services/authService'
@@ -9,6 +9,7 @@ export const ChangePasswordPage = () => {
   const navigate = useNavigate()
   const showToast = useUiStore((s) => s.showToast)
   const oauthProvider = useUserStore((s) => s.oauthProvider)
+  const logout = useUserStore((s) => s.logout)
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -17,14 +18,12 @@ export const ChangePasswordPage = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [serverError, setServerError] = useState('')
 
-  // 소셜 계정이 직접 URL로 진입한 경우 마이페이지로 돌려보낸다
   useEffect(() => {
     if (oauthProvider) {
-      showToast('소셜 계정은 비밀번호를 변경할 수 없어요', 'error')
+      showToast('소셜 계정은 비밀번호를 변경할 수 없어요.', 'error')
       navigate('/mypage', { replace: true })
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [oauthProvider, navigate, showToast])
 
   const newPasswordError = useMemo(() => {
     if (!newPassword) return ''
@@ -49,10 +48,17 @@ export const ChangePasswordPage = () => {
     setIsLoading(true)
     try {
       await authApi.changePassword(currentPassword, newPassword)
-      showToast('비밀번호가 변경되었어요', 'success')
+      showToast('비밀번호가 변경되었어요.', 'success')
       navigate('/mypage', { replace: true })
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : '비밀번호 변경에 실패했어요')
+      const message = err instanceof Error ? err.message : '비밀번호 변경에 실패했어요.'
+      if (message === '로그인이 만료되었어요. 다시 로그인해주세요.') {
+        logout()
+        showToast(message, 'error')
+        navigate('/login', { replace: true, state: { redirectTo: '/change-password' } })
+        return
+      }
+      setServerError(message)
     } finally {
       setIsLoading(false)
     }
@@ -64,7 +70,6 @@ export const ChangePasswordPage = () => {
 
       <h2 className="mb-6 text-xl font-bold text-gray-900">비밀번호 변경</h2>
 
-      {/* 현재 비밀번호 */}
       <label className="text-sm font-medium text-gray-700">현재 비밀번호</label>
       <div className="mt-2 flex h-12 items-center rounded-xl border border-gray-200 px-3">
         <input
@@ -75,17 +80,15 @@ export const ChangePasswordPage = () => {
           placeholder="현재 비밀번호를 입력하세요"
           className="flex-1 text-sm outline-none"
         />
-        {/* 비밀번호 토글은 모든 입력창에 공통 적용 */}
         <button
           type="button"
           onClick={() => setShowPasswords((v) => !v)}
           className="w-10 text-gray-400"
         >
-          {showPasswords ? '🙈' : '👁'}
+          {showPasswords ? '숨김' : '보기'}
         </button>
       </div>
 
-      {/* 새 비밀번호 */}
       <label className="mt-4 text-sm font-medium text-gray-700">새 비밀번호</label>
       <div className="mt-2 flex h-12 items-center rounded-xl border border-gray-200 px-3">
         <input
@@ -99,7 +102,6 @@ export const ChangePasswordPage = () => {
       </div>
       {newPasswordError && <p className="mt-1 text-xs text-red-500">{newPasswordError}</p>}
 
-      {/* 새 비밀번호 확인 */}
       <label className="mt-4 text-sm font-medium text-gray-700">새 비밀번호 확인</label>
       <input
         type={showPasswords ? 'text' : 'password'}

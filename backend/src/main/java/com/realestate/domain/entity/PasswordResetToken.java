@@ -21,8 +21,8 @@ public class PasswordResetToken {
     private Long userId;
 
     // SecureRandom으로 생성한 6자리 숫자 문자열 (generateCode 참고)
-    @Column(nullable = false, length = 6)
-    private String token;
+    @Column(name = "token_hash", nullable = false, length = 255)
+    private String tokenHash;
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
@@ -40,10 +40,10 @@ public class PasswordResetToken {
     }
 
     /** 정적 팩토리 메서드 — 생성자 대신 사용하여 불변 필드를 명확히 한다. */
-    public static PasswordResetToken create(Long userId, String token, LocalDateTime expiresAt) {
+    public static PasswordResetToken create(Long userId, String tokenHash, LocalDateTime expiresAt) {
         PasswordResetToken t = new PasswordResetToken();
         t.userId = userId;
-        t.token = token;
+        t.tokenHash = tokenHash;
         t.expiresAt = expiresAt;
         return t;
     }
