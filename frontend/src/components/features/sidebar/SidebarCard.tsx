@@ -1,7 +1,12 @@
-import type { ReactNode } from 'react'
+﻿import type { ReactNode } from 'react'
 
-export const SidebarCard = ({ children }: { children: ReactNode }) => (
-  <div className="mb-4 rounded-xl border border-gray-100 bg-white p-4">
+type SidebarCardProps = {
+  children: ReactNode
+  className?: string
+}
+
+export const SidebarCard = ({ children, className = '' }: SidebarCardProps) => (
+  <div className={`mb-4 rounded-xl border border-gray-100 bg-white p-4 ${className}`.trim()}>
     {children}
   </div>
 )

@@ -2,7 +2,7 @@
 import { useUiStore } from '../../stores/uiStore'
 import { useUserStore } from '../../stores/userStore'
 
-const HIDDEN_PATHS = ['/map', '/post', '/write', '/verify', '/login', '/signup', '/trade/search', '/trade/apartment']
+const HIDDEN_PATHS = ['/map', '/post', '/write', '/verify', '/login', '/signup', '/trade', '/trade/search', '/trade/apartment']
 
 export const FloatingWriteButton = () => {
   const navigate = useNavigate()

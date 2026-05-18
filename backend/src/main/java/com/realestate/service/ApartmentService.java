@@ -76,7 +76,9 @@ public class ApartmentService {
                 projection.getTotalHouseholdCount(),
                 projection.getCompletionYear(),
                 projection.getRecentSalePrice(),
-                projection.getRecentSaleArea()
+                projection.getRecentSaleArea(),
+                projection.getRecentTradeDate(),
+                projection.getRecent30dTradeCount()
         );
     }
 

@@ -1,24 +1,46 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 import type { PopularPost } from '../../../types/sidebar'
 
 type Props = { rank: number; post: PopularPost }
 
+const stripTrailingSerial = (title: string) => title.replace(/\s*#\d+\s*$/, '').trim()
+
 export const PopularPostItem = ({ rank, post }: Props) => {
   const navigate = useNavigate()
+  const cleanedTitle = stripTrailingSerial(post.title)
 
   return (
     <div
       onClick={() => navigate(`/post/${post.postId}`)}
-      className="-mx-1 flex cursor-pointer items-start gap-2 rounded border-b border-gray-100 px-1 py-2 transition-colors last:border-b-0 hover:bg-gray-50"
+      className={`-mx-1 mb-1.5 flex cursor-pointer items-start gap-2 rounded-lg border-b border-gray-100 px-1 py-2.5 transition-colors last:mb-0 last:border-b-0 hover:bg-gray-50 ${
+        rank <= 3 ? 'border-l-2 border-l-blue-300 pl-2' : ''
+      }`}
     >
-      <span className={`mt-0.5 w-5 shrink-0 text-sm font-bold ${rank <= 3 ? 'text-blue-500' : 'text-gray-400'}`}>
+      <span
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+          rank <= 3 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500'
+        }`}
+      >
         {rank}
       </span>
+
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-gray-800">{post.title}</p>
-        <div className="mt-0.5 flex gap-2">
-          <span className="text-xs text-gray-400">❤️ {post.likeCount}</span>
-          <span className="text-xs text-gray-400">💬 {post.commentCount}</span>
+        <p
+          className="text-sm text-gray-800"
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {cleanedTitle}
+        </p>
+
+        <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
+          <span>좋아요 {post.likeCount}</span>
+          <span>댓글 {post.commentCount}</span>
+          <span>커뮤니티 인기</span>
         </div>
       </div>
     </div>

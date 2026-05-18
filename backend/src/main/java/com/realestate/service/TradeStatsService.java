@@ -23,7 +23,7 @@ public class TradeStatsService {
 
     @Transactional(readOnly = true)
     public TradeTrendDto getTradeTrend(String period) {
-        int days = "1w".equals(period) ? 7 : 30;
+        int days = resolvePeriodDays(period);
         int prevDays = days * 2;
 
         TradeSummaryProjection current = realTradeRepository.findTradeSummary(days);
@@ -65,7 +65,7 @@ public class TradeStatsService {
 
     @Transactional(readOnly = true)
     public List<TopApartmentDto> getTopApartments(String period) {
-        int days = "1w".equals(period) ? 7 : 30;
+        int days = resolvePeriodDays(period);
         AtomicInteger rank = new AtomicInteger(1);
         return realTradeRepository.findTopApartmentsByTransactionCount(days)
                 .stream()
@@ -78,5 +78,16 @@ public class TradeStatsService {
                         p.getLatestSalePrice()
                 ))
                 .toList();
+    }
+
+    private int resolvePeriodDays(String period) {
+        if (period == null) return 30;
+        return switch (period) {
+            case "1w" -> 7;
+            case "2m" -> 60;
+            case "3m" -> 90;
+            case "1m" -> 30;
+            default -> 30;
+        };
     }
 }

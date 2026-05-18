@@ -1,16 +1,49 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 import type { MostCommentedPost } from '../../../types/sidebar'
 
-export const CommentedPostItem = ({ post }: { post: MostCommentedPost }) => {
+type Props = {
+  rank: number
+  post: MostCommentedPost
+}
+
+const stripTrailingSerial = (title: string) => title.replace(/\s*#\d+\s*$/, '').trim()
+
+export const CommentedPostItem = ({ rank, post }: Props) => {
   const navigate = useNavigate()
+  const cleanedTitle = stripTrailingSerial(post.title)
 
   return (
     <div
       onClick={() => navigate(`/post/${post.postId}`)}
-      className="-mx-1 cursor-pointer rounded border-b border-gray-100 px-1 py-2 transition-colors last:border-b-0 hover:bg-gray-50"
+      className={`-mx-1 mb-1.5 flex cursor-pointer items-start gap-2 rounded-lg border-b border-gray-100 px-1 py-2.5 transition-colors last:mb-0 last:border-b-0 hover:bg-gray-50 ${
+        rank <= 3 ? 'border-l-2 border-l-emerald-300 pl-2' : ''
+      }`}
     >
-      <p className="truncate text-sm text-gray-800">{post.title}</p>
-      <p className="mt-0.5 text-xs text-gray-400">💬 {post.commentCount}개</p>
+      <span
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+          rank <= 3 ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-500'
+        }`}
+      >
+        {rank}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p
+          className="text-sm text-gray-800"
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {cleanedTitle}
+        </p>
+        <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
+          <span>댓글 {post.commentCount}개</span>
+          <span>토론 활발</span>
+        </div>
+      </div>
     </div>
   )
 }

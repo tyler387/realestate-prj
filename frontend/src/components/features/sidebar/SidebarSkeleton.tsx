@@ -1,15 +1,22 @@
-const SkeletonBox = ({ className }: { className: string }) => (
+﻿const SkeletonBox = ({ className }: { className: string }) => (
   <div className={`animate-pulse rounded bg-gray-200 ${className}`} />
 )
 
 export const ApartmentInfoCardSkeleton = () => (
-  <div className="space-y-2">
-    <SkeletonBox className="h-4 w-3/4" />
+  <div className="space-y-3">
+    <div className="flex items-start justify-between gap-2">
+      <SkeletonBox className="h-5 w-2/3" />
+      <SkeletonBox className="h-5 w-16 rounded-full" />
+    </div>
     <SkeletonBox className="h-3 w-1/2" />
-    <div className="mt-3 space-y-2">
-      <SkeletonBox className="h-3 w-full" />
-      <SkeletonBox className="h-3 w-full" />
-      <SkeletonBox className="h-3 w-full" />
+    <div className="grid grid-cols-2 gap-2">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <SkeletonBox key={i} className="h-14 w-full rounded-lg" />
+      ))}
+    </div>
+    <div className="grid grid-cols-2 gap-2">
+      <SkeletonBox className="h-9 w-full rounded-lg" />
+      <SkeletonBox className="h-9 w-full rounded-lg" />
     </div>
   </div>
 )

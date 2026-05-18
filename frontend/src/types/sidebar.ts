@@ -6,6 +6,8 @@ export type ApartmentSummary = {
   builtYear: number
   recentPrice: number
   recentSaleArea: number | null
+  recentTradeDate: string | null
+  recent30dTradeCount: number
 }
 
 export type PopularPost = {

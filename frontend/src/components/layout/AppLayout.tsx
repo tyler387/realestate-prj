@@ -42,14 +42,14 @@ export const AppLayout = () => {
 
       <div className="flex flex-1 justify-center overflow-hidden">
         {showLeft && (
-          <aside className="hidden w-[260px] shrink-0 overflow-y-auto pb-4 pl-2 pr-4 pt-4 lg:block">
+          <aside className="modern-scroll hidden w-[280px] shrink-0 overflow-y-auto pb-4 pl-2 pr-4 pt-4 lg:block">
             {showCommLeft  && <LeftSidebar aptId={aptId} />}
             {showTradeLeft && <TradeLeftSidebar />}
           </aside>
         )}
 
         <div className="relative flex min-w-0 max-w-3xl flex-1 flex-col overflow-hidden bg-gray-50 shadow-xl">
-          <main className="flex-1 overflow-y-auto">
+          <main className="modern-scroll flex-1 overflow-y-auto">
             <Outlet />
           </main>
           <FloatingWriteButton />
@@ -78,7 +78,7 @@ export const AppLayout = () => {
         </div>
 
         {showRight && (
-          <aside className="hidden w-[260px] shrink-0 overflow-y-auto pb-4 pl-4 pr-2 pt-4 lg:block">
+          <aside className="modern-scroll hidden w-[280px] shrink-0 overflow-y-auto pb-4 pl-4 pr-2 pt-4 lg:block">
             {showCommRight  && <RightSidebar aptId={aptId} />}
             {showTradeRight && <TradeRightSidebar />}
           </aside>

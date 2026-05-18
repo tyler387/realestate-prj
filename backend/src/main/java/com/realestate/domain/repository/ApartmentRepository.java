@@ -98,10 +98,12 @@ public interface ApartmentRepository extends JpaRepository<Apartment, Long> {
                 a.total_household_count AS totalHouseholdCount,
                 a.completion_year AS completionYear,
                 rt.trade_amount AS recentSalePrice,
-                rt.exclusive_area AS recentSaleArea
+                rt.exclusive_area AS recentSaleArea,
+                rt.trade_date AS recentTradeDate,
+                COALESCE(trc.recent30d_trade_count, 0) AS recent30dTradeCount
             FROM apartment a
             LEFT JOIN LATERAL (
-                SELECT r.trade_amount, r.exclusive_area
+                SELECT r.trade_amount, r.exclusive_area, r.trade_date
                 FROM real_trade r
                 WHERE r.apartment_id = a.id
                   AND r.trade_type = 'SALE'
@@ -109,6 +111,14 @@ public interface ApartmentRepository extends JpaRepository<Apartment, Long> {
                 ORDER BY r.trade_date DESC, r.id DESC
                 LIMIT 1
             ) rt ON true
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*)::int AS recent30d_trade_count
+                FROM real_trade r
+                WHERE r.apartment_id = a.id
+                  AND r.trade_type = 'SALE'
+                  AND r.is_cancelled = false
+                  AND r.trade_date >= CURRENT_DATE - INTERVAL '30 days'
+            ) trc ON true
             WHERE a.id = :id
             """, nativeQuery = true)
     Optional<ApartmentSummaryProjection> findSummaryById(@Param("id") Long id);

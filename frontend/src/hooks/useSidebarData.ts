@@ -28,6 +28,8 @@ export const useApartmentSummary = (aptId: string) =>
           builtYear: data.completionYear ?? 0,
           recentPrice: data.recentSalePrice ?? 0,
           recentSaleArea: data.recentSaleArea ?? null,
+          recentTradeDate: data.recentTradeDate ?? null,
+          recent30dTradeCount: data.recent30dTradeCount ?? 0,
         })),
     enabled: !!aptId,
     staleTime: 1000 * 60 * 60,

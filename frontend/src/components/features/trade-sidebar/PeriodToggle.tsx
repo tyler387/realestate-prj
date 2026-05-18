@@ -1,15 +1,16 @@
-type Props = {
+﻿type Props = {
   value: '1w' | '1m'
   onChange: (v: '1w' | '1m') => void
 }
 
 export const PeriodToggle = ({ value, onChange }: Props) => (
-  <div className="flex gap-1">
+  <div className="flex shrink-0 gap-1">
     {(['1w', '1m'] as const).map((p) => (
       <button
         key={p}
+        type="button"
         onClick={() => onChange(p)}
-        className={`rounded-full px-3 py-1 text-xs transition-colors ${
+        className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] transition-colors ${
           value === p
             ? 'bg-blue-500 text-white'
             : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
