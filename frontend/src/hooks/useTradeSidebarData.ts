@@ -1,26 +1,52 @@
 import { useQuery } from '@tanstack/react-query'
 import type {
   PriceTrendData,
+  PriceTrendCompareData,
   HighestPriceDeal,
   TopTransactionApartment,
 } from '../types/sidebar'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
+type TrendPeriod = '1w' | '1m' | '3m' | '6m' | '12m'
 
-export const usePriceTrend = (period: '1w' | '1m') =>
+export const usePriceTrend = (period: TrendPeriod) =>
   useQuery<PriceTrendData>({
     queryKey: ['trade', 'priceTrend', period],
     queryFn: () =>
       fetch(`${API_BASE_URL}/api/v1/trades/trend?period=${period}`)
         .then((r) => r.json())
         .then((data) => ({
-          period: data.period as '1w' | '1m',
+          period: data.period as TrendPeriod,
           avgPrice: data.avgPrice ?? 0,
           changeRate: data.changeRate ?? 0,
           transactionCount: data.transactionCount ?? 0,
         })),
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
+    placeholderData: (previousData) => previousData,
+  })
+
+export const usePriceTrendCompare = (period: TrendPeriod) =>
+  useQuery<PriceTrendCompareData>({
+    queryKey: ['trade', 'priceTrendCompare', period],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/v1/trades/trend/compare?period=${period}`)
+      if (!response.ok) throw new Error('Failed to load trend compare data')
+
+      const data = await response.json()
+      return {
+        currentMedian: data.currentMedian ?? 0,
+        currentAvg: data.currentAvg ?? 0,
+        currentTransactionCount: data.currentTransactionCount ?? 0,
+        previousMedian: data.previousMedian ?? 0,
+        previousAvg: data.previousAvg ?? 0,
+        previousTransactionCount: data.previousTransactionCount ?? 0,
+        changeRate: data.changeRate ?? 0,
+      }
+    },
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+    placeholderData: (previousData) => previousData,
   })
 
 export const useHighestPriceDeals = () =>

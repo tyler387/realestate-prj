@@ -1,4 +1,4 @@
-import { useTradeFilterStore } from '../../../stores/tradeFilterStore'
+﻿import { useTradeFilterStore } from '../../../stores/tradeFilterStore'
 import { useTopTransactionApartments } from '../../../hooks/useTradeSidebarData'
 import { SidebarCard, CardTitle } from '../sidebar/SidebarCard'
 import { PostListSkeleton } from '../sidebar/SidebarSkeleton'
@@ -12,7 +12,7 @@ export const TopTransactionApartments = () => {
 
   return (
     <SidebarCard>
-      <CardTitle>🏆 거래량 TOP5</CardTitle>
+      <CardTitle>거래량 TOP 5</CardTitle>
 
       {isLoading && <PostListSkeleton />}
 

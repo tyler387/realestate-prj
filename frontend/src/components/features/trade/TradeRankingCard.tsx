@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 import { type TopApartment } from '../../../types/trade'
 import { formatPrice } from '../../../utils/formatPrice'
 

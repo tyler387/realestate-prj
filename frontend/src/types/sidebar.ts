@@ -24,10 +24,20 @@ export type MostCommentedPost = {
 }
 
 export type PriceTrendData = {
-  period: '1w' | '1m'
+  period: '1w' | '1m' | '3m' | '6m' | '12m'
   avgPrice: number
   changeRate: number
   transactionCount: number
+}
+
+export type PriceTrendCompareData = {
+  currentMedian: number
+  currentAvg: number
+  currentTransactionCount: number
+  previousMedian: number
+  previousAvg: number
+  previousTransactionCount: number
+  changeRate: number
 }
 
 export type HighestPriceDeal = {

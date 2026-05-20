@@ -1,6 +1,8 @@
 package com.realestate.auth;
 
 import com.realestate.domain.repository.UserRepository;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -17,9 +19,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import jakarta.servlet.http.HttpServletResponse;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -44,9 +43,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Spring Boot 에러 핸들러 (ResponseStatusException → /error 재전송)
                         .requestMatchers("/error").permitAll()
-                        // 인증 없이 허용하는 엔드포인트
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/signup",
@@ -56,13 +53,10 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/api/auth/password-reset/**").permitAll()
                         .requestMatchers("/api/auth/oauth/**").permitAll()
-                        // 인증 필요
+                        .requestMatchers("/api/v1/trades/filters/**").authenticated()
                         .requestMatchers("/api/auth/me").authenticated()
-                        // 커뮤니티 / 조회 API - 하위 호환 (nickname 기반 유지)
                         .requestMatchers("/api/community/**").permitAll()
-                        // 아파트 / 실거래 조회
                         .requestMatchers(HttpMethod.GET, "/api/v1/**").permitAll()
-                        // Admin - AdminApiKeyInterceptor가 처리
                         .requestMatchers("/api/v1/admin/**").permitAll()
                         .anyRequest().authenticated()
                 )

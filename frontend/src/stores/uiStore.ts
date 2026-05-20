@@ -8,11 +8,16 @@ type ToastState = {
   type:    ToastType
 }
 
+export type TradePeriod = '1m' | '3m' | '6m' | '12m' | 'custom'
+
 type UiStore = {
   selectedApartmentId:    number | null
   setSelectedApartmentId: (id: number | null) => void
-  tradePeriod:            '1m' | '2m' | '3m'
-  setTradePeriod:         (p: '1m' | '2m' | '3m') => void
+  tradePeriod:            TradePeriod
+  setTradePeriod:         (p: TradePeriod) => void
+  tradeCustomStartDate:   string | null
+  tradeCustomEndDate:     string | null
+  setTradeCustomDateRange: (startDate: string | null, endDate: string | null) => void
   searchKeyword:          string | null
   setSearchKeyword:       (kw: string | null) => void
   isAuthSheetOpen:        boolean
@@ -29,6 +34,10 @@ export const useUiStore = create<UiStore>((set) => ({
   setSelectedApartmentId: (selectedApartmentId) => set({ selectedApartmentId }),
   tradePeriod:            '1m',
   setTradePeriod:         (tradePeriod) => set({ tradePeriod }),
+  tradeCustomStartDate:   null,
+  tradeCustomEndDate:     null,
+  setTradeCustomDateRange: (tradeCustomStartDate, tradeCustomEndDate) =>
+    set({ tradeCustomStartDate, tradeCustomEndDate }),
   searchKeyword:          null,
   setSearchKeyword:       (searchKeyword) => set({ searchKeyword }),
   isAuthSheetOpen:        false,

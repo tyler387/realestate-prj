@@ -1,4 +1,4 @@
-import { useTradeFilterStore } from '../../../stores/tradeFilterStore'
+﻿import { useTradeFilterStore } from '../../../stores/tradeFilterStore'
 import { useHighestPriceDeals } from '../../../hooks/useTradeSidebarData'
 import { SidebarCard, CardTitle } from '../sidebar/SidebarCard'
 import { PostListSkeleton, ErrorMessage } from '../sidebar/SidebarSkeleton'
@@ -10,16 +10,16 @@ export const HighestPriceDeals = () => {
 
   return (
     <SidebarCard>
-      <CardTitle>🔥 신고가 거래</CardTitle>
+      <CardTitle>최고가 거래</CardTitle>
 
       {isLoading && <PostListSkeleton />}
 
       {!isLoading && isError && (
-        <ErrorMessage text="데이터를 불러올 수 없습니다" />
+        <ErrorMessage text="데이터를 불러오지 못했습니다" />
       )}
 
       {!isLoading && !isError && data?.length === 0 && (
-        <ErrorMessage text="신고가 없음" />
+        <ErrorMessage text="최고가 거래가 없습니다" />
       )}
 
       {!isLoading && !isError && data && data.length > 0 && (
