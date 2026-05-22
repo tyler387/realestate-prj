@@ -6,6 +6,6 @@ public record TopApartmentDto(
         String aptName,
         String sigungu,
         Long transactionCount,
-        Long latestSalePrice
+        Long recentMonthAvgPrice
 ) {
 }

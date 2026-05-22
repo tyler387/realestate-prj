@@ -6,7 +6,7 @@ type Props = { ranking: TopApartment }
 
 export const TradeRankingCard = ({ ranking }: Props) => {
   const navigate = useNavigate()
-  const { rank, aptId, aptName, sigungu, transactionCount, latestSalePrice } = ranking
+  const { rank, aptId, aptName, sigungu, transactionCount, recentMonthAvgPrice } = ranking
   const isTop3 = rank <= 3
 
   return (
@@ -21,8 +21,8 @@ export const TradeRankingCard = ({ ranking }: Props) => {
       <div className="flex-1">
         <p className="text-base font-semibold text-gray-900">{aptName}</p>
         <p className="mt-0.5 text-xs text-gray-400">{sigungu}</p>
-        {latestSalePrice != null && (
-          <p className="mt-1 text-sm text-gray-700">{formatPrice(latestSalePrice)}</p>
+        {recentMonthAvgPrice != null && (
+          <p className="mt-1 text-sm text-gray-700">최근 1개월 평균 {formatPrice(recentMonthAvgPrice)}</p>
         )}
       </div>
 

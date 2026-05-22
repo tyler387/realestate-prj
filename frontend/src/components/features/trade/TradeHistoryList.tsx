@@ -13,9 +13,13 @@ const DEAL_TYPE_MAP: Record<'SALE' | 'JEONSE' | 'MONTHLY', '매매' | '전세' |
 type Props = {
   records: TradeRecord[]
   selectedType: TradeType
+  selectedArea?: number | null
 }
 
-export const TradeHistoryList = ({ records, selectedType }: Props) => {
+const isSameArea = (left: number, right: number | null | undefined) =>
+  right == null || Math.abs(left - right) < 0.0001
+
+export const TradeHistoryList = ({ records, selectedType, selectedArea }: Props) => {
   const { priceRange, dealType, areaRange } = useTradeFilterStore()
 
   const filtered = records
@@ -38,6 +42,7 @@ export const TradeHistoryList = ({ records, selectedType }: Props) => {
       if (areaRange === '40') return r.area >= 115
       return true
     })
+    .filter((r) => isSameArea(r.area, selectedArea))
 
   if (filtered.length === 0) {
     return <EmptyState icon="📭" title="해당 유형의 거래 내역이 없어요" />

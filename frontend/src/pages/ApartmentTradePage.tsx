@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ApartmentHeader } from '../components/features/trade/ApartmentHeader'
 import { TradeTypeFilter, type TradeType } from '../components/features/trade/TradeTypeFilter'
@@ -12,15 +12,23 @@ export const ApartmentTradePage = () => {
   const { id } = useParams<{ id: string }>()
   const aptId = Number(id)
   const [selectedType, setSelectedType] = useState<TradeType>('all')
+  const [selectedArea, setSelectedArea] = useState<number | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const status = useUserStore((s) => s.status)
   const openAuthSheet = useUiStore((s) => s.openAuthSheet)
 
-  const { summaryQuery, tradesQuery, priceHistoryQuery } = useApartmentTrade(aptId)
+  const { summaryQuery, tradesQuery, tradeAreasQuery, priceHistoryQuery } = useApartmentTrade(aptId, selectedArea)
 
   const apartment = summaryQuery.data
   const records = tradesQuery.data ?? []
+  const areaOptions = tradeAreasQuery.data ?? []
   const priceHistory = priceHistoryQuery.data ?? []
+
+  useEffect(() => {
+    if (areaOptions.length === 0) return
+    const hasSelectedArea = selectedArea != null && areaOptions.some((option) => option.area === selectedArea)
+    if (!hasSelectedArea) setSelectedArea(areaOptions[0].area)
+  }, [areaOptions, selectedArea])
 
   const latestPrice = apartment?.latestPrice ?? 0
   const priceChangeRate = (() => {
@@ -66,9 +74,16 @@ export const ApartmentTradePage = () => {
         onFavoriteToggle={handleFavoriteToggle}
       />
       <TradeTypeFilter value={selectedType} onChange={setSelectedType} />
-      <PriceChart data={priceHistory} tradeType={selectedType} />
+      <PriceChart
+        data={priceHistory}
+        records={records}
+        tradeType={selectedType}
+        areaOptions={areaOptions}
+        selectedArea={selectedArea}
+        onAreaChange={setSelectedArea}
+      />
       <p className="px-4 py-2 text-sm font-semibold text-gray-700">최근 실거래 내역</p>
-      <TradeHistoryList records={records} selectedType={selectedType} />
+      <TradeHistoryList records={records} selectedType={selectedType} selectedArea={selectedArea} />
     </div>
   )
 }

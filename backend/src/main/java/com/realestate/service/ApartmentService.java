@@ -8,7 +8,9 @@ import com.realestate.web.dto.ApartmentMarkerDto;
 import com.realestate.web.dto.ApartmentSearchDto;
 import com.realestate.web.dto.ApartmentSummaryDto;
 import com.realestate.web.dto.PriceHistoryDto;
+import com.realestate.web.dto.TradeAreaOptionDto;
 import com.realestate.web.dto.TradeRecordDto;
+import java.math.BigDecimal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -101,17 +103,47 @@ public class ApartmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<PriceHistoryDto> getPriceHistory(Long id) {
+    public List<TradeAreaOptionDto> getTradeAreaOptions(Long id) {
         apartmentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Apartment not found"));
-        return realTradeRepository.findPriceHistoryByApartmentId(id)
+        return realTradeRepository.findTradeAreaOptionsByApartmentId(id)
+                .stream()
+                .map(p -> new TradeAreaOptionDto(
+                        p.getArea(),
+                        p.getTransactionCount()
+                ))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PriceHistoryDto> getPriceHistory(Long id, BigDecimal exclusiveArea, String areaRange) {
+        apartmentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Apartment not found"));
+
+        AreaBounds areaBounds = resolveAreaBounds(areaRange);
+        return realTradeRepository.findPriceHistoryByApartmentId(id, exclusiveArea, areaBounds.minArea(), areaBounds.maxArea())
                 .stream()
                 .map(p -> new PriceHistoryDto(
                         p.getMonth(),
                         p.getAvgPrice(),
+                        p.getAvgPricePerPyeong(),
+                        p.getTransactionCount(),
                         toKoreanTradeType(p.getTradeType())
                 ))
                 .toList();
+    }
+
+    private AreaBounds resolveAreaBounds(String areaRange) {
+        if ("20".equals(areaRange)) {
+            return new AreaBounds(59.0, 82.0);
+        }
+        if ("30".equals(areaRange)) {
+            return new AreaBounds(82.0, 115.0);
+        }
+        if ("40".equals(areaRange)) {
+            return new AreaBounds(115.0, null);
+        }
+        return new AreaBounds(null, null);
     }
 
     private String toKoreanTradeType(String tradeType) {
@@ -123,4 +155,6 @@ public class ApartmentService {
             default -> tradeType;
         };
     }
+
+    private record AreaBounds(Double minArea, Double maxArea) {}
 }

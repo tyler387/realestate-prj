@@ -142,7 +142,7 @@ public class TradeStatsService {
             maxArea = 165.0;
         }
 
-        String tradeType = dealType == null ? "SALE" : dealType;
+        String tradeType = resolveTradeType(dealType);
         boolean onlyNew = "NEW".equals(preset);
         boolean onlyLarge = "LARGE".equals(preset);
         boolean onlyHot = "HOT".equals(preset);
@@ -196,7 +196,7 @@ public class TradeStatsService {
                         p.getAptName(),
                         p.getSigungu(),
                         p.getTransactionCount(),
-                        p.getLatestSalePrice()
+                        p.getRecentMonthAvgPrice()
                 ))
                 .toList();
     }
@@ -232,6 +232,16 @@ public class TradeStatsService {
             case "custom" -> 1;
             case "1m" -> 1;
             default -> 1;
+        };
+    }
+
+    private String resolveTradeType(String dealType) {
+        if (dealType == null || dealType.isBlank()) return "SALE";
+        return switch (dealType) {
+            case "SALE" -> "SALE";
+            case "JEONSE", "LEASE" -> "LEASE";
+            case "MONTHLY" -> "MONTHLY";
+            default -> "SALE";
         };
     }
 

@@ -1,4 +1,4 @@
-export type TradeType = 'all' | '매매' | '전세' | '월세'
+﻿export type TradeType = 'all' | '매매' | '전세' | '월세'
 
 const TYPES: { value: TradeType; label: string }[] = [
   { value: 'all', label: '전체' },

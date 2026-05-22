@@ -1,4 +1,4 @@
-export type TradeApartment = {
+﻿export type TradeApartment = {
   apartmentId: number
   apartmentName: string
   address: string
@@ -13,6 +13,7 @@ export type TradeRecord = {
   area: number
   tradeType: '매매' | '전세' | '월세'
   price: number
+  pricePerPyeong?: number | null
   deposit?: number
   monthlyRent?: number
   contractDate: string
@@ -21,7 +22,14 @@ export type TradeRecord = {
 export type PriceHistory = {
   month: string
   avgPrice: number
+  avgPricePerPyeong: number | null
+  transactionCount: number
   tradeType: '매매' | '전세' | '월세'
+}
+
+export type TradeAreaOption = {
+  area: number
+  transactionCount: number
 }
 
 export type TopApartment = {
@@ -30,5 +38,5 @@ export type TopApartment = {
   aptName: string
   sigungu: string
   transactionCount: number
-  latestSalePrice: number | null
+  recentMonthAvgPrice: number | null
 }

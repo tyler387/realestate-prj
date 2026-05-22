@@ -27,17 +27,41 @@ public interface RealTradeRepository extends JpaRepository<RealTrade, Long> {
 
     @Query(value = """
             SELECT
+                r.exclusive_area AS area,
+                COUNT(*) AS transactionCount
+            FROM real_trade r
+            WHERE r.apartment_id = :aptId
+              AND r.is_cancelled = false
+              AND r.exclusive_area IS NOT NULL
+              AND r.exclusive_area > 0
+            GROUP BY r.exclusive_area
+            ORDER BY r.exclusive_area ASC
+            """, nativeQuery = true)
+    List<TradeAreaOptionProjection> findTradeAreaOptionsByApartmentId(@Param("aptId") Long aptId);
+
+    @Query(value = """
+            SELECT
                 TO_CHAR(DATE_TRUNC('month', r.trade_date), 'YY.MM') AS month,
                 ROUND(AVG(r.trade_amount)) AS avgPrice,
+                ROUND(AVG(r.price_per_pyeong)) AS avgPricePerPyeong,
+                COUNT(*) AS transactionCount,
                 r.trade_type AS tradeType
             FROM real_trade r
             WHERE r.apartment_id = :aptId
               AND r.is_cancelled = false
               AND r.trade_date >= CURRENT_DATE - INTERVAL '12 months'
+              AND (:exclusiveArea IS NULL OR r.exclusive_area = :exclusiveArea)
+              AND (:minArea IS NULL OR r.exclusive_area >= :minArea)
+              AND (:maxArea IS NULL OR r.exclusive_area < :maxArea)
             GROUP BY DATE_TRUNC('month', r.trade_date), r.trade_type
             ORDER BY DATE_TRUNC('month', r.trade_date) ASC
             """, nativeQuery = true)
-    List<PriceHistoryProjection> findPriceHistoryByApartmentId(@Param("aptId") Long aptId);
+    List<PriceHistoryProjection> findPriceHistoryByApartmentId(
+            @Param("aptId") Long aptId,
+            @Param("exclusiveArea") java.math.BigDecimal exclusiveArea,
+            @Param("minArea") Double minArea,
+            @Param("maxArea") Double maxArea
+    );
 
     @Query(value = """
             SELECT
@@ -86,15 +110,10 @@ public interface RealTradeRepository extends JpaRepository<RealTrade, Long> {
                 a.complex_name AS aptName,
                 a.sigungu AS sigungu,
                 COUNT(*) AS transactionCount,
-                (
-                    SELECT r2.trade_amount
-                    FROM real_trade r2
-                    WHERE r2.apartment_id = a.id
-                      AND r2.trade_type = 'SALE'
-                      AND r2.is_cancelled = false
-                    ORDER BY r2.trade_date DESC
-                    LIMIT 1
-                ) AS latestSalePrice
+                ROUND(AVG(CASE
+                    WHEN r.trade_date >= CURRENT_DATE - INTERVAL '1 month' THEN r.trade_amount
+                    ELSE NULL
+                END)) AS recentMonthAvgPrice
             FROM real_trade r
             JOIN apartment a ON r.apartment_id = a.id
             WHERE r.is_cancelled = false
@@ -113,15 +132,10 @@ public interface RealTradeRepository extends JpaRepository<RealTrade, Long> {
                 a.complex_name AS aptName,
                 a.sigungu AS sigungu,
                 COUNT(*) AS transactionCount,
-                (
-                    SELECT r2.trade_amount
-                    FROM real_trade r2
-                    WHERE r2.apartment_id = a.id
-                      AND r2.trade_type = :tradeType
-                      AND r2.is_cancelled = false
-                    ORDER BY r2.trade_date DESC
-                    LIMIT 1
-                ) AS latestSalePrice
+                ROUND(AVG(CASE
+                    WHEN r.trade_date >= CURRENT_DATE - INTERVAL '1 month' THEN r.trade_amount
+                    ELSE NULL
+                END)) AS recentMonthAvgPrice
             FROM real_trade r
             JOIN apartment a ON r.apartment_id = a.id
             WHERE r.is_cancelled = false

@@ -72,14 +72,14 @@ export const TradePage = () => {
 
       return fetch(`${API_BASE_URL}/api/v1/trades/top-apartments?${params.toString()}`)
         .then((r) => r.json())
-        .then((data: Array<{ rank: number; aptId: number; aptName: string; sigungu: string; transactionCount: number; latestSalePrice: number | null }>) =>
+        .then((data: Array<{ rank: number; aptId: number; aptName: string; sigungu: string; transactionCount: number; recentMonthAvgPrice: number | null }>) =>
           data.map((d) => ({
             rank: d.rank,
             aptId: d.aptId,
             aptName: d.aptName,
             sigungu: d.sigungu ?? '',
             transactionCount: d.transactionCount,
-            latestSalePrice: d.latestSalePrice,
+            recentMonthAvgPrice: d.recentMonthAvgPrice,
           }))
         )
     },

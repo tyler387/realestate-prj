@@ -6,5 +6,5 @@ public interface TopApartmentProjection {
     String getAptName();
     String getSigungu();
     Long getTransactionCount();
-    Long getLatestSalePrice();
+    Long getRecentMonthAvgPrice();
 }

@@ -5,7 +5,9 @@ import com.realestate.web.dto.ApartmentMarkerDto;
 import com.realestate.web.dto.ApartmentSearchDto;
 import com.realestate.web.dto.ApartmentSummaryDto;
 import com.realestate.web.dto.PriceHistoryDto;
+import com.realestate.web.dto.TradeAreaOptionDto;
 import com.realestate.web.dto.TradeRecordDto;
+import java.math.BigDecimal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,8 +48,17 @@ public class ApartmentController {
         return apartmentService.getTradeRecords(id);
     }
 
+    @GetMapping("/{id}/trade-areas")
+    public List<TradeAreaOptionDto> getTradeAreas(@PathVariable Long id) {
+        return apartmentService.getTradeAreaOptions(id);
+    }
+
     @GetMapping("/{id}/price-history")
-    public List<PriceHistoryDto> getPriceHistory(@PathVariable Long id) {
-        return apartmentService.getPriceHistory(id);
+    public List<PriceHistoryDto> getPriceHistory(
+            @PathVariable Long id,
+            @RequestParam(required = false) BigDecimal exclusiveArea,
+            @RequestParam(required = false) String areaRange
+    ) {
+        return apartmentService.getPriceHistory(id, exclusiveArea, areaRange);
     }
 }
