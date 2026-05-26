@@ -57,15 +57,23 @@ const TabSwitcher = ({
 )
 
 // ── ModalContent ───────────────────────────────────────────────────
-const ModalContent = ({ onClose }: { onClose: () => void }) => {
+const ModalContent = ({
+  onClose,
+  onSelectApartment,
+}: {
+  onClose: () => void
+  onSelectApartment?: (apartmentId: number) => void
+}) => {
   const [activeTab, setActiveTab] = useState<Tab>('검색')
   const showToast = useUiStore(s => s.showToast)
 
   const handleSelect = (apt: Apartment) => {
+    const apartmentId = toApartmentId(apt.aptId)
     useUserStore.getState().setUser({
-      apartmentId:   toApartmentId(apt.aptId),
+      apartmentId,
       apartmentName: apt.aptName,
     })
+    onSelectApartment?.(apartmentId)
     saveRecentApartment(apt)
     onClose()
     showToast(`${apt.aptName} 커뮤니티로 이동했어요`, 'success')
@@ -88,7 +96,13 @@ const ModalContent = ({ onClose }: { onClose: () => void }) => {
 }
 
 // ── ApartmentSelectModal (Portal) ──────────────────────────────────
-export const ApartmentSelectModal = ({ onClose }: { onClose: () => void }) => {
+export const ApartmentSelectModal = ({
+  onClose,
+  onSelectApartment,
+}: {
+  onClose: () => void
+  onSelectApartment?: (apartmentId: number) => void
+}) => {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -117,7 +131,7 @@ export const ApartmentSelectModal = ({ onClose }: { onClose: () => void }) => {
                      flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
-          <ModalContent onClose={onClose} />
+          <ModalContent onClose={onClose} onSelectApartment={onSelectApartment} />
         </div>
       </div>
     </>,

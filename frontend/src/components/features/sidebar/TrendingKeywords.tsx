@@ -4,9 +4,16 @@ import { usePostStore } from '../../../stores/postStore'
 import { SidebarCard } from './SidebarCard'
 import { KeywordsSkeleton } from './SidebarSkeleton'
 import { KeywordChip } from './KeywordChip'
+import type { BoardCode, CommunityScope } from '../../../types'
 
-export const TrendingKeywords = ({ aptId }: { aptId: string }) => {
-  const { data, isLoading, isError } = useTrendingKeywords(aptId)
+type Props = {
+  scope: CommunityScope
+  aptId: string
+  boardCode: BoardCode
+}
+
+export const TrendingKeywords = ({ scope, aptId, boardCode }: Props) => {
+  const { data, isLoading, isError } = useTrendingKeywords(scope, aptId, boardCode)
   const { searchKeyword, setSearchKeyword } = useUiStore()
   const { setCategory } = usePostStore()
 

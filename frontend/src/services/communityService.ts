@@ -1,13 +1,18 @@
-import type { Comment, Post } from '../types'
+import type { BoardCode, Comment, CommunityScope, Post } from '../types'
 import { tokenStorage } from './authService'
 
 type CreatePostParams = {
-  aptId: number
-  category: string
+  scope: CommunityScope
+  boardCode: BoardCode
+  aptId?: number | null
+  category?: string
   title: string
   content: string
   authorNickname: string
   complexName: string
+  authorUserId?: number | null
+  authorVerifiedAptId?: number | null
+  authorVerifiedAptName?: string | null
 }
 
 export type LikeToggleResponse = {
@@ -31,8 +36,7 @@ const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
     },
   })
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(text || '커뮤니티 API 요청에 실패했습니다.')
+    throw new Error(await resolveErrorMessage(response, '커뮤니티 API 요청에 실패했습니다.'))
   }
   return (await response.json()) as T
 }
@@ -46,22 +50,42 @@ const requestVoid = async (path: string, init?: RequestInit): Promise<void> => {
     },
   })
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(text || 'API 요청에 실패했습니다.')
+    throw new Error(await resolveErrorMessage(response, 'API 요청에 실패했습니다.'))
   }
 }
 
+const resolveErrorMessage = async (response: Response, fallback: string) => {
+  const text = await response.text()
+  let message = text || fallback
+
+  try {
+    const json = JSON.parse(text) as { message?: string; error?: string }
+    message = json.message || json.error || message
+  } catch {}
+
+  if (response.status === 401) {
+    tokenStorage.remove()
+    return '로그인이 만료되었어요. 다시 로그인해주세요.'
+  }
+  if (response.status === 403) {
+    return message === 'Forbidden' ? '아파트 인증 후 이용할 수 있습니다.' : message
+  }
+  return message
+}
+
 export const fetchPosts = async (
+  scope: CommunityScope,
   aptId: number | null,
-  category: string,
+  boardCode: BoardCode,
   sortType: string,
 ): Promise<Post[]> => {
-  if (aptId == null) return []
+  if (scope === 'APARTMENT' && aptId == null) return []
   const params = new URLSearchParams({
-    aptId: String(aptId),
-    category: category === '전체' ? '' : category,
+    scope,
+    boardCode,
     sortType,
   })
+  if (scope === 'APARTMENT' && aptId != null) params.set('aptId', String(aptId))
   return requestJson<Post[]>(`/api/community/posts?${params.toString()}`)
 }
 

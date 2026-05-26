@@ -35,6 +35,14 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
 
     List<CommunityPost> findByAptIdAndCategoryOrderByCreatedAtDesc(Long aptId, String category);
 
+    List<CommunityPost> findByBoardScopeOrderByCreatedAtDesc(String boardScope);
+
+    List<CommunityPost> findByBoardScopeAndBoardCodeOrderByCreatedAtDesc(String boardScope, String boardCode);
+
+    List<CommunityPost> findByBoardScopeAndAptIdOrderByCreatedAtDesc(String boardScope, Long aptId);
+
+    List<CommunityPost> findByBoardScopeAndAptIdAndBoardCodeOrderByCreatedAtDesc(String boardScope, Long aptId, String boardCode);
+
     @Query("""
             SELECT p FROM CommunityPost p
             WHERE p.aptId = :aptId
@@ -49,6 +57,56 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
             ORDER BY p.commentCount DESC, p.createdAt DESC
             """)
     List<CommunityPost> findMostCommentedByAptId(@Param("aptId") Long aptId,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            SELECT p FROM CommunityPost p
+            WHERE p.boardScope = :boardScope
+              AND (:boardCode IS NULL OR p.boardCode = :boardCode)
+            ORDER BY (p.likeCount * 2 + p.commentCount) DESC, p.createdAt DESC
+            """)
+    List<CommunityPost> findPopularByScope(
+            @Param("boardScope") String boardScope,
+            @Param("boardCode") String boardCode,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            SELECT p FROM CommunityPost p
+            WHERE p.boardScope = :boardScope
+              AND p.aptId = :aptId
+              AND (:boardCode IS NULL OR p.boardCode = :boardCode)
+            ORDER BY (p.likeCount * 2 + p.commentCount) DESC, p.createdAt DESC
+            """)
+    List<CommunityPost> findPopularByScopeAndAptId(
+            @Param("boardScope") String boardScope,
+            @Param("aptId") Long aptId,
+            @Param("boardCode") String boardCode,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            SELECT p FROM CommunityPost p
+            WHERE p.boardScope = :boardScope
+              AND (:boardCode IS NULL OR p.boardCode = :boardCode)
+              AND p.commentCount > 0
+            ORDER BY p.commentCount DESC, p.createdAt DESC
+            """)
+    List<CommunityPost> findMostCommentedByScope(
+            @Param("boardScope") String boardScope,
+            @Param("boardCode") String boardCode,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            SELECT p FROM CommunityPost p
+            WHERE p.boardScope = :boardScope
+              AND p.aptId = :aptId
+              AND (:boardCode IS NULL OR p.boardCode = :boardCode)
+              AND p.commentCount > 0
+            ORDER BY p.commentCount DESC, p.createdAt DESC
+            """)
+    List<CommunityPost> findMostCommentedByScopeAndAptId(
+            @Param("boardScope") String boardScope,
+            @Param("aptId") Long aptId,
+            @Param("boardCode") String boardCode,
             org.springframework.data.domain.Pageable pageable);
 
     // 회원 탈퇴 시 작성자 닉네임을 익명으로 일괄 변경

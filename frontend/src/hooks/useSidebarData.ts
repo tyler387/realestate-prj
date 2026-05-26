@@ -4,14 +4,24 @@ import type {
   PopularPost,
   MostCommentedPost,
 } from '../types/sidebar'
+import type { BoardCode, CommunityScope } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
 
 const QUERY_KEYS = {
   apartmentSummary: (aptId: string) => ['apartment', 'summary', aptId],
-  trendingKeywords: (aptId: string) => ['community', 'keywords', aptId],
-  popularPosts:     (aptId: string) => ['community', 'popular', aptId],
-  mostCommented:    (aptId: string) => ['community', 'hotComments', aptId],
+  trendingKeywords: (scope: CommunityScope, aptId: string, boardCode: BoardCode) =>
+    ['community', 'keywords', scope, aptId, boardCode],
+  popularPosts: (scope: CommunityScope, aptId: string, boardCode: BoardCode) =>
+    ['community', 'popular', scope, aptId, boardCode],
+  mostCommented: (scope: CommunityScope, aptId: string, boardCode: BoardCode) =>
+    ['community', 'hotComments', scope, aptId, boardCode],
+}
+
+const communityParams = (scope: CommunityScope, aptId: string, boardCode: BoardCode) => {
+  const params = new URLSearchParams({ scope, boardCode })
+  if (scope === 'APARTMENT' && aptId) params.set('aptId', aptId)
+  return params
 }
 
 export const useApartmentSummary = (aptId: string) =>
@@ -36,40 +46,40 @@ export const useApartmentSummary = (aptId: string) =>
     gcTime: 1000 * 60 * 120,
   })
 
-export const useTrendingKeywords = (aptId: string) =>
+export const useTrendingKeywords = (scope: CommunityScope, aptId: string, boardCode: BoardCode) =>
   useQuery<string[]>({
-    queryKey: QUERY_KEYS.trendingKeywords(aptId),
+    queryKey: QUERY_KEYS.trendingKeywords(scope, aptId, boardCode),
     queryFn: () =>
-      fetch(`${API_BASE_URL}/api/community/${aptId}/keywords`).then((r) => r.json()),
-    enabled: !!aptId,
+      fetch(`${API_BASE_URL}/api/community/keywords?${communityParams(scope, aptId, boardCode)}`).then((r) => r.json()),
+    enabled: scope === 'GLOBAL' || !!aptId,
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
   })
 
-export const usePopularPosts = (aptId: string) =>
+export const usePopularPosts = (scope: CommunityScope, aptId: string, boardCode: BoardCode) =>
   useQuery<PopularPost[]>({
-    queryKey: QUERY_KEYS.popularPosts(aptId),
+    queryKey: QUERY_KEYS.popularPosts(scope, aptId, boardCode),
     queryFn: () =>
-      fetch(`${API_BASE_URL}/api/community/posts/popular?aptId=${aptId}`)
+      fetch(`${API_BASE_URL}/api/community/posts/popular?${communityParams(scope, aptId, boardCode)}`)
         .then((r) => r.json())
         .then((data: Array<{ id: number; title: string; likeCount: number; commentCount: number }>) =>
           data.map((p) => ({ postId: p.id, title: p.title, likeCount: p.likeCount, commentCount: p.commentCount }))
         ),
-    enabled: !!aptId,
+    enabled: scope === 'GLOBAL' || !!aptId,
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
   })
 
-export const useMostCommentedPosts = (aptId: string) =>
+export const useMostCommentedPosts = (scope: CommunityScope, aptId: string, boardCode: BoardCode) =>
   useQuery<MostCommentedPost[]>({
-    queryKey: QUERY_KEYS.mostCommented(aptId),
+    queryKey: QUERY_KEYS.mostCommented(scope, aptId, boardCode),
     queryFn: () =>
-      fetch(`${API_BASE_URL}/api/community/posts/hot-comments?aptId=${aptId}`)
+      fetch(`${API_BASE_URL}/api/community/posts/hot-comments?${communityParams(scope, aptId, boardCode)}`)
         .then((r) => r.json())
         .then((data: Array<{ id: number; title: string; commentCount: number }>) =>
           data.map((p) => ({ postId: p.id, title: p.title, commentCount: p.commentCount }))
         ),
-    enabled: !!aptId,
+    enabled: scope === 'GLOBAL' || !!aptId,
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
   })

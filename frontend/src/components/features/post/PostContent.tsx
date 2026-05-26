@@ -11,6 +11,8 @@ type Props = {
 
 export const PostContent = ({ post, isOwner, onDelete }: Props) => {
   const [showConfirm, setShowConfirm] = useState(false)
+  const verificationLabel = post.authorVerificationLabel
+    ?? (post.authorVerifiedAptName ? `아파트 인증: ${post.authorVerifiedAptName}` : post.complexName)
 
   return (
     <div className="bg-white px-4 py-5">
@@ -22,7 +24,7 @@ export const PostContent = ({ post, isOwner, onDelete }: Props) => {
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <span className="font-medium text-gray-600">{post.authorNickname}</span>
           <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-500">
-            {post.complexName}
+            {verificationLabel}
           </span>
           <span>·</span>
           <span>{post.createdAt}</span>

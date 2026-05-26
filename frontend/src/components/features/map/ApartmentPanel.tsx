@@ -4,6 +4,9 @@ import type { ApartmentMarker } from '../../../types'
 import { formatPrice } from '../../../utils/formatPrice'
 import { useUserStore } from '../../../stores/userStore'
 import { useUiStore } from '../../../stores/uiStore'
+import { usePostStore } from '../../../stores/postStore'
+import { buildCommunitySearchParams } from '../../../utils/communityUrl'
+import { DEFAULT_APARTMENT_BOARD, DEFAULT_SORT_TYPE } from '../../../constants/communityBoards'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
 
@@ -12,6 +15,8 @@ type RecentPost = { id: number; title: string }
 export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | null }) => {
   const navigate = useNavigate()
   const status = useUserStore((s) => s.status)
+  const setUser = useUserStore((s) => s.setUser)
+  const setCommunityState = usePostStore((s) => s.setCommunityState)
   const openAuthSheet = useUiStore((s) => s.openAuthSheet)
   const [recentPosts, setRecentPosts] = useState<RecentPost[]>([])
 
@@ -28,10 +33,31 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
 
   const handleWrite = () => {
     if (status === 'VERIFIED') {
+      if (apartment) {
+        setUser({
+          apartmentId: apartment.id,
+          apartmentName: apartment.complexName,
+        })
+        setCommunityState({
+          scope: 'APARTMENT',
+          boardCode: DEFAULT_APARTMENT_BOARD,
+          sortType: DEFAULT_SORT_TYPE,
+        })
+      }
       navigate('/write')
       return
     }
     openAuthSheet()
+  }
+
+  const handleBrowse = () => {
+    if (!apartment) return
+    setUser({
+      apartmentId: apartment.id,
+      apartmentName: apartment.complexName,
+    })
+    const params = buildCommunitySearchParams('APARTMENT', DEFAULT_APARTMENT_BOARD, DEFAULT_SORT_TYPE, apartment.id)
+    navigate(`/?${params.toString()}`)
   }
 
   if (!apartment) {
@@ -72,7 +98,7 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
 
         <div className="flex gap-2">
           <button
-            onClick={() => navigate('/')}
+            onClick={handleBrowse}
             className="flex-1 rounded-lg border border-gray-200 py-2 text-sm text-gray-600 hover:bg-gray-50"
           >
             둘러보기

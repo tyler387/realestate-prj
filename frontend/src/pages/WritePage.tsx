@@ -1,39 +1,52 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { usePostStore } from '../stores/postStore'
 import { useUserStore } from '../stores/userStore'
 import { createPost } from '../services/communityService'
-
-const categories = ['자유', '질문', '정보', '민원', '거래']
+import { apartmentBoards, boardLabelOf, boardsForScope } from '../constants/communityBoards'
 
 export const WritePage = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const apartmentId           = useUserStore((s) => s.apartmentId)
-  const apartmentName         = useUserStore((s) => s.apartmentName)
+  const { scope, boardCode, setBoardCode } = usePostStore()
+  const apartmentId = useUserStore((s) => s.apartmentId)
+  const apartmentName = useUserStore((s) => s.apartmentName)
+  const verifiedApartmentId = useUserStore((s) => s.verifiedApartmentId)
   const verifiedApartmentName = useUserStore((s) => s.verifiedApartmentName)
   const nickname = useUserStore((s) => s.nickname)
+  const userId = useUserStore((s) => s.userId)
 
-  const [category, setCategory] = useState('자유')
+  const boards = scope === 'GLOBAL'
+    ? boardsForScope(scope)
+    : apartmentBoards.filter((board) => board.value !== 'APT_ALL')
+  const activeBoardCode = boards.some((board) => board.value === boardCode) ? boardCode : boards[0].value
+
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const handleSubmit = async () => {
-    if (!title.trim() || !content.trim() || apartmentId == null || isSubmitting) return
+    if (!title.trim() || !content.trim() || isSubmitting) return
+    if (scope === 'APARTMENT' && apartmentId == null) return
 
     setIsSubmitting(true)
     setSubmitError(null)
 
     try {
       await createPost({
-        aptId: apartmentId,
-        category,
+        scope,
+        boardCode: activeBoardCode,
+        aptId: scope === 'APARTMENT' ? apartmentId : null,
+        category: boardLabelOf(activeBoardCode),
         title: title.trim(),
         content: content.trim(),
         authorNickname: nickname ?? '익명',
         complexName: verifiedApartmentName ?? apartmentName ?? '아파트',
+        authorUserId: userId,
+        authorVerifiedAptId: verifiedApartmentId ?? apartmentId,
+        authorVerifiedAptName: verifiedApartmentName ?? apartmentName,
       })
       await queryClient.invalidateQueries({ queryKey: ['community', 'posts'] })
       navigate('/')
@@ -47,18 +60,23 @@ export const WritePage = () => {
 
   return (
     <div className="flex flex-col pb-6">
-      <div className="bg-blue-50 px-4 py-3 text-sm text-blue-600">{apartmentName ?? '아파트'} 주민으로 글 작성 중</div>
+      <div className="bg-blue-50 px-4 py-3 text-sm text-blue-600">
+        {scope === 'GLOBAL'
+          ? `${verifiedApartmentName ?? apartmentName ?? '아파트'} 인증 계정으로 전체 커뮤니티에 글 작성 중`
+          : `${apartmentName ?? '아파트'} 게시판에 글 작성 중`}
+      </div>
 
       <div className="flex gap-2 overflow-x-auto px-4 py-3">
-        {categories.map((item) => (
+        {boards.map((item) => (
           <button
-            key={item}
-            onClick={() => setCategory(item)}
+            key={item.value}
+            type="button"
+            onClick={() => setBoardCode(item.value)}
             className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-              category === item ? 'bg-blue-500 text-white' : 'border border-gray-200 text-gray-500'
+              activeBoardCode === item.value ? 'bg-blue-500 text-white' : 'border border-gray-200 text-gray-500'
             }`}
           >
-            {item}
+            {item.label}
           </button>
         ))}
       </div>
@@ -85,8 +103,9 @@ export const WritePage = () => {
         {submitError && <p className="mb-3 text-sm text-red-500">{submitError}</p>}
 
         <button
+          type="button"
           onClick={handleSubmit}
-          disabled={!title.trim() || !content.trim() || apartmentId == null || isSubmitting}
+          disabled={!title.trim() || !content.trim() || (scope === 'APARTMENT' && apartmentId == null) || isSubmitting}
           className="w-full rounded-lg bg-blue-500 py-3 text-sm font-medium text-white disabled:opacity-40 hover:bg-blue-600"
         >
           {isSubmitting ? '등록 중...' : '등록하기'}

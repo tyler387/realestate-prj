@@ -5,6 +5,7 @@ import com.realestate.domain.entity.CommunityPost;
 import com.realestate.domain.entity.KeywordLog;
 import com.realestate.domain.entity.PostLikeLog;
 import com.realestate.domain.entity.PostViewLog;
+import com.realestate.domain.entity.User;
 import com.realestate.domain.repository.CommentRepository;
 import com.realestate.domain.repository.CommunityPostRepository;
 import com.realestate.domain.repository.KeywordLogRepository;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -37,6 +39,10 @@ public class CommunityService {
 
     private static final String CATEGORY_ALL = "전체";
     private static final String SORT_POPULAR = "인기순";
+    private static final String SCOPE_GLOBAL = "GLOBAL";
+    private static final String SCOPE_APARTMENT = "APARTMENT";
+    private static final String BOARD_GLOBAL_DEFAULT = "BLAH";
+    private static final String BOARD_APARTMENT_ALL = "APT_ALL";
     private static final List<String> STOP_WORDS = List.of(
             "이", "가", "을", "를", "은", "는", "의", "에", "에서", "와", "과", "도", "로", "으로",
             "하다", "있다", "없다", "되다", "것", "수", "그", "저", "이것", "저것", "어떻게",
@@ -54,14 +60,23 @@ public class CommunityService {
     private final PostLikeLogRepository postLikeLogRepository;
 
     @Transactional(readOnly = true)
-    public List<CommunityPostDto> getPosts(Long aptId, String category, String sortType) {
-        validateAptId(aptId);
+    public List<CommunityPostDto> getPosts(String scope, Long aptId, String boardCode, String category, String sortType) {
+        String normalizedScope = normalizeScope(scope, aptId);
         String normalizedCategory = category == null ? "" : category.trim();
+        String normalizedBoardCode = normalizeBoardCode(normalizedScope, boardCode, normalizedCategory);
         String normalizedSort = sortType == null ? "" : sortType.trim();
 
-        List<CommunityPost> posts = isCategoryAll(normalizedCategory)
-                ? communityPostRepository.findByAptIdOrderByCreatedAtDesc(aptId)
-                : communityPostRepository.findByAptIdAndCategoryOrderByCreatedAtDesc(aptId, normalizedCategory);
+        List<CommunityPost> posts;
+        if (SCOPE_GLOBAL.equals(normalizedScope)) {
+            posts = isBoardAll(normalizedBoardCode)
+                    ? communityPostRepository.findByBoardScopeOrderByCreatedAtDesc(SCOPE_GLOBAL)
+                    : communityPostRepository.findByBoardScopeAndBoardCodeOrderByCreatedAtDesc(SCOPE_GLOBAL, normalizedBoardCode);
+        } else {
+            validateAptId(aptId);
+            posts = isBoardAll(normalizedBoardCode)
+                    ? communityPostRepository.findByBoardScopeAndAptIdOrderByCreatedAtDesc(SCOPE_APARTMENT, aptId)
+                    : communityPostRepository.findByBoardScopeAndAptIdAndBoardCodeOrderByCreatedAtDesc(SCOPE_APARTMENT, aptId, normalizedBoardCode);
+        }
 
         if (SORT_POPULAR.equals(normalizedSort)) {
             posts = posts.stream()
@@ -87,16 +102,30 @@ public class CommunityService {
 
     // 작성 시 keyword_logs 기록 (PRD §11.4)
     @Transactional
-    public CommunityPostDto createPost(CreateCommunityPostRequest request) {
-        validateCreateRequest(request);
+    public CommunityPostDto createPost(CreateCommunityPostRequest request, Authentication authentication) {
+        User user = requireVerifiedUser(authentication);
+        validateCreateRequest(request, user);
+        Long requestedAptId = firstNonNull(request.aptId(), user.getApartmentId());
+        String scope = normalizeScope(request.scope(), requestedAptId);
+        String boardCode = normalizeBoardCode(scope, request.boardCode(), request.category());
+        String category = resolveCategoryLabel(scope, boardCode, request.category());
+        Long aptId = SCOPE_APARTMENT.equals(scope) ? requestedAptId : null;
+        String verifiedAptName = user.getApartmentName();
+        String verificationLabel = isBlank(verifiedAptName) ? null : "아파트 인증: " + verifiedAptName.trim();
         CommunityPost created = communityPostRepository.save(
                 CommunityPost.create(
-                        request.aptId(),
-                        request.category().trim(),
+                        aptId,
+                        category,
+                        scope,
+                        boardCode,
                         request.title().trim(),
                         request.content().trim(),
-                        request.authorNickname().trim(),
-                        request.complexName().trim()
+                        user.getNickname(),
+                        firstNonBlank(verifiedAptName, request.complexName(), "아파트"),
+                        user.getId(),
+                        user.getApartmentId(),
+                        verifiedAptName,
+                        verificationLabel
                 )
         );
 
@@ -113,29 +142,49 @@ public class CommunityService {
 
     // posts 테이블 기반 — score(좋아요*2+댓글) 내림차순 Top 5
     @Transactional(readOnly = true)
-    public List<CommunityPostDto> getPopularPosts(Long aptId) {
+    public List<CommunityPostDto> getPopularPosts(String scope, Long aptId, String boardCode) {
+        String normalizedScope = normalizeScope(scope, aptId);
+        String normalizedBoardCode = nullableBoardCode(normalizeBoardCode(normalizedScope, boardCode, null));
+        if (SCOPE_GLOBAL.equals(normalizedScope)) {
+            return communityPostRepository.findPopularByScope(SCOPE_GLOBAL, normalizedBoardCode, PageRequest.of(0, 5))
+                    .stream().map(this::toDto).toList();
+        }
         validateAptId(aptId);
-        return communityPostRepository.findPopularByAptId(aptId, PageRequest.of(0, 5))
+        return communityPostRepository.findPopularByScopeAndAptId(
+                        SCOPE_APARTMENT, aptId, normalizedBoardCode, PageRequest.of(0, 5))
                 .stream().map(this::toDto).toList();
     }
 
     // posts 테이블 기반 — 댓글 수 내림차순 Top 5
     @Transactional(readOnly = true)
-    public List<CommunityPostDto> getMostCommentedPosts(Long aptId) {
+    public List<CommunityPostDto> getMostCommentedPosts(String scope, Long aptId, String boardCode) {
+        String normalizedScope = normalizeScope(scope, aptId);
+        String normalizedBoardCode = nullableBoardCode(normalizeBoardCode(normalizedScope, boardCode, null));
+        if (SCOPE_GLOBAL.equals(normalizedScope)) {
+            return communityPostRepository.findMostCommentedByScope(SCOPE_GLOBAL, normalizedBoardCode, PageRequest.of(0, 5))
+                    .stream().map(this::toDto).toList();
+        }
         validateAptId(aptId);
-        return communityPostRepository.findMostCommentedByAptId(aptId, PageRequest.of(0, 5))
+        return communityPostRepository.findMostCommentedByScopeAndAptId(
+                        SCOPE_APARTMENT, aptId, normalizedBoardCode, PageRequest.of(0, 5))
                 .stream().map(this::toDto).toList();
     }
 
     // keyword_stats 기반 Top 10, 데이터 없으면 텍스트 파싱 fallback (PRD §10.3)
     @Transactional(readOnly = true)
-    public List<String> getTrendingKeywords(Long aptId) {
-        validateAptId(aptId);
-        List<String> keywords = keywordStatsRepository.findTrendingKeywords(aptId);
-        if (!keywords.isEmpty()) {
-            return keywords;
+    public List<String> getTrendingKeywords(String scope, Long aptId, String boardCode) {
+        String normalizedScope = normalizeScope(scope, aptId);
+        String normalizedBoardCode = nullableBoardCode(normalizeBoardCode(normalizedScope, boardCode, null));
+        if (SCOPE_APARTMENT.equals(normalizedScope)) {
+            validateAptId(aptId);
+            if (normalizedBoardCode == null) {
+                List<String> keywords = keywordStatsRepository.findTrendingKeywords(aptId);
+                if (!keywords.isEmpty()) {
+                    return keywords;
+                }
+            }
         }
-        return extractKeywordsFromPosts(aptId);
+        return extractKeywordsFromPosts(normalizedScope, aptId, normalizedBoardCode);
     }
 
     // 댓글 목록 조회
@@ -147,18 +196,16 @@ public class CommunityService {
 
     // 댓글 작성
     @Transactional
-    public CommentDto createComment(Long postId, CreateCommentRequest request) {
+    public CommentDto createComment(Long postId, CreateCommentRequest request, Authentication authentication) {
+        User user = requireVerifiedUser(authentication);
         CommunityPost post = communityPostRepository.findById(postId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
-        if (isBlank(request.authorNickname())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authorNickname is required");
-        }
-        if (isBlank(request.content())) {
+        if (request == null || isBlank(request.content())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "content is required");
         }
         Comment saved = commentRepository.save(
-                Comment.create(postId, request.authorNickname().trim(), request.content().trim(),
-                        request.authorAptId(), request.authorAptName()));
+                Comment.create(post.getId(), user.getNickname(), request.content().trim(),
+                        user.getApartmentId(), user.getApartmentName()));
         communityPostRepository.incrementCommentCount(postId);
         return toCommentDto(saved);
     }
@@ -188,12 +235,11 @@ public class CommunityService {
 
     // 좋아요 토글
     @Transactional
-    public LikeToggleResponse toggleLike(Long postId, String authorNickname) {
+    public LikeToggleResponse toggleLike(Long postId, Authentication authentication) {
+        User user = requireVerifiedUser(authentication);
         CommunityPost post = communityPostRepository.findById(postId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
-        if (isBlank(authorNickname)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authorNickname is required");
-        }
+        String authorNickname = user.getNickname();
         boolean alreadyLiked = postLikeLogRepository.existsByPostIdAndAuthorNickname(postId, authorNickname);
         if (alreadyLiked) {
             postLikeLogRepository.deleteByPostIdAndAuthorNickname(postId, authorNickname);
@@ -248,11 +294,16 @@ public class CommunityService {
         return new CommunityPostDto(
                 post.getId(),
                 post.getAptId(),
+                post.getBoardScope(),
+                post.getBoardCode(),
                 post.getCategory(),
                 post.getTitle(),
                 post.getContent(),
                 post.getAuthorNickname(),
                 post.getComplexName(),
+                post.getAuthorVerifiedAptId(),
+                post.getAuthorVerifiedAptName(),
+                post.getAuthorVerificationLabel(),
                 toRelativeTime(post.getCreatedAt()),
                 post.getLikeCount(),
                 post.getCommentCount(),
@@ -270,9 +321,8 @@ public class CommunityService {
     }
 
     // keyword_stats 없을 때 텍스트 파싱 fallback — 최근 50개만 분석
-    private List<String> extractKeywordsFromPosts(Long aptId) {
-        List<CommunityPost> posts = communityPostRepository.findByAptIdOrderByCreatedAtDesc(aptId,
-                org.springframework.data.domain.PageRequest.of(0, 50));
+    private List<String> extractKeywordsFromPosts(String scope, Long aptId, String boardCode) {
+        List<CommunityPost> posts = findPostsForKeywordFallback(scope, aptId, boardCode);
         Map<String, Long> wordCount = posts.stream()
                 .flatMap(post -> Arrays.stream((post.getTitle() + " " + post.getContent()).split("[\\s,!?.]+"))
                         .map(w -> w.replaceAll("[^가-힣a-zA-Z0-9]", ""))
@@ -284,6 +334,21 @@ public class CommunityService {
                 .limit(10)
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
+    }
+
+    private List<CommunityPost> findPostsForKeywordFallback(String scope, Long aptId, String boardCode) {
+        List<CommunityPost> posts;
+        if (SCOPE_GLOBAL.equals(scope)) {
+            posts = boardCode == null
+                    ? communityPostRepository.findByBoardScopeOrderByCreatedAtDesc(SCOPE_GLOBAL)
+                    : communityPostRepository.findByBoardScopeAndBoardCodeOrderByCreatedAtDesc(SCOPE_GLOBAL, boardCode);
+        } else {
+            validateAptId(aptId);
+            posts = boardCode == null
+                    ? communityPostRepository.findByBoardScopeAndAptIdOrderByCreatedAtDesc(SCOPE_APARTMENT, aptId)
+                    : communityPostRepository.findByBoardScopeAndAptIdAndBoardCodeOrderByCreatedAtDesc(SCOPE_APARTMENT, aptId, boardCode);
+        }
+        return posts.stream().limit(50).toList();
     }
 
     private String toRelativeTime(LocalDateTime createdAt) {
@@ -300,22 +365,106 @@ public class CommunityService {
         return category.isBlank() || CATEGORY_ALL.equals(category);
     }
 
+    private boolean isBoardAll(String boardCode) {
+        return boardCode == null || boardCode.isBlank() || BOARD_APARTMENT_ALL.equals(boardCode);
+    }
+
+    private String nullableBoardCode(String boardCode) {
+        return isBoardAll(boardCode) ? null : boardCode;
+    }
+
+    private String normalizeScope(String scope, Long aptId) {
+        if (SCOPE_GLOBAL.equals(scope)) return SCOPE_GLOBAL;
+        if (SCOPE_APARTMENT.equals(scope)) return SCOPE_APARTMENT;
+        return aptId == null ? SCOPE_GLOBAL : SCOPE_APARTMENT;
+    }
+
+    private String normalizeBoardCode(String scope, String boardCode, String category) {
+        if (!isBlank(boardCode)) return boardCode.trim();
+        String normalizedCategory = category == null ? "" : category.trim();
+        if (SCOPE_GLOBAL.equals(scope)) {
+            return switch (normalizedCategory) {
+                case "부동산" -> "REAL_ESTATE";
+                case "주식" -> "STOCK";
+                case "연애" -> "DATING";
+                case "블라블라", "" -> BOARD_GLOBAL_DEFAULT;
+                default -> BOARD_GLOBAL_DEFAULT;
+            };
+        }
+        return switch (normalizedCategory) {
+            case "", "전체" -> BOARD_APARTMENT_ALL;
+            case "질문" -> "APT_QNA";
+            case "정보" -> "APT_INFO";
+            case "실거래", "거래" -> "APT_TRADE";
+            case "민원", "민원/하자" -> "APT_ISSUE";
+            case "자유" -> "APT_FREE";
+            default -> "APT_FREE";
+        };
+    }
+
+    private String resolveCategoryLabel(String scope, String boardCode, String fallback) {
+        if (!isBlank(fallback) && !CATEGORY_ALL.equals(fallback.trim())) return fallback.trim();
+        if (SCOPE_GLOBAL.equals(scope)) {
+            return switch (boardCode) {
+                case "REAL_ESTATE" -> "부동산";
+                case "STOCK" -> "주식";
+                case "DATING" -> "연애";
+                case "BLAH" -> "블라블라";
+                default -> "블라블라";
+            };
+        }
+        return switch (boardCode) {
+            case "APT_QNA" -> "질문";
+            case "APT_INFO" -> "정보";
+            case "APT_TRADE" -> "실거래";
+            case "APT_ISSUE" -> "민원/하자";
+            case "APT_ALL", "APT_FREE" -> "자유";
+            default -> "자유";
+        };
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (!isBlank(value)) return value.trim();
+        }
+        return "";
+    }
+
+    private Long firstNonNull(Long... values) {
+        for (Long value : values) {
+            if (value != null) return value;
+        }
+        return null;
+    }
+
     private void validateAptId(Long aptId) {
         if (aptId == null || aptId < 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "aptId is required");
         }
     }
 
-    private void validateCreateRequest(CreateCommunityPostRequest request) {
+    private User requireVerifiedUser(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login is required");
+        }
+        if (user.getStatus() != User.UserStatus.VERIFIED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "아파트 인증 후 이용할 수 있습니다.");
+        }
+        if (user.getApartmentId() == null || isBlank(user.getApartmentName())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "아파트 인증 정보가 없습니다.");
+        }
+        return user;
+    }
+
+    private void validateCreateRequest(CreateCommunityPostRequest request, User user) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
         }
-        validateAptId(request.aptId());
-        if (isBlank(request.category()))      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "category is required");
+        Long requestedAptId = firstNonNull(request.aptId(), user.getApartmentId());
+        String scope = normalizeScope(request.scope(), requestedAptId);
+        if (SCOPE_APARTMENT.equals(scope)) validateAptId(requestedAptId);
         if (isBlank(request.title()))         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title is required");
         if (isBlank(request.content()))       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "content is required");
-        if (isBlank(request.authorNickname())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authorNickname is required");
-        if (isBlank(request.complexName()))   throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "complexName is required");
     }
 
     private boolean isBlank(String value) {

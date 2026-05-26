@@ -1,11 +1,16 @@
 package com.realestate.web.dto;
 
 public record CreateCommunityPostRequest(
+        String scope,
+        String boardCode,
         Long aptId,
         String category,
         String title,
         String content,
         String authorNickname,
-        String complexName
+        String complexName,
+        Long authorUserId,
+        Long authorVerifiedAptId,
+        String authorVerifiedAptName
 ) {
 }

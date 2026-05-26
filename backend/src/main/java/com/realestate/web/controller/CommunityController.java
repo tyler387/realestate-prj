@@ -7,9 +7,9 @@ import com.realestate.web.dto.CreateCommentRequest;
 import com.realestate.web.dto.CreateCommunityPostRequest;
 import com.realestate.web.dto.LikeToggleResponse;
 import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,11 +29,13 @@ public class CommunityController {
 
     @GetMapping("/posts")
     public List<CommunityPostDto> getPosts(
-            @RequestParam Long aptId,
+            @RequestParam(required = false) String scope,
+            @RequestParam(required = false) Long aptId,
+            @RequestParam(required = false) String boardCode,
             @RequestParam(required = false) String category,
             @RequestParam(required = false, defaultValue = "최신순") String sortType
     ) {
-        return communityService.getPosts(aptId, category, sortType);
+        return communityService.getPosts(scope, aptId, boardCode, category, sortType);
     }
 
     @GetMapping("/posts/{id}")
@@ -45,23 +47,40 @@ public class CommunityController {
     }
 
     @PostMapping("/posts")
-    public CommunityPostDto createPost(@RequestBody CreateCommunityPostRequest request) {
-        return communityService.createPost(request);
+    public CommunityPostDto createPost(@RequestBody CreateCommunityPostRequest request, Authentication authentication) {
+        return communityService.createPost(request, authentication);
     }
 
     @GetMapping("/posts/popular")
-    public List<CommunityPostDto> getPopularPosts(@RequestParam Long aptId) {
-        return communityService.getPopularPosts(aptId);
+    public List<CommunityPostDto> getPopularPosts(
+            @RequestParam(required = false) String scope,
+            @RequestParam(required = false) Long aptId,
+            @RequestParam(required = false) String boardCode
+    ) {
+        return communityService.getPopularPosts(scope, aptId, boardCode);
     }
 
     @GetMapping("/posts/hot-comments")
-    public List<CommunityPostDto> getMostCommentedPosts(@RequestParam Long aptId) {
-        return communityService.getMostCommentedPosts(aptId);
+    public List<CommunityPostDto> getMostCommentedPosts(
+            @RequestParam(required = false) String scope,
+            @RequestParam(required = false) Long aptId,
+            @RequestParam(required = false) String boardCode
+    ) {
+        return communityService.getMostCommentedPosts(scope, aptId, boardCode);
+    }
+
+    @GetMapping("/keywords")
+    public List<String> getTrendingKeywords(
+            @RequestParam(required = false) String scope,
+            @RequestParam(required = false) Long aptId,
+            @RequestParam(required = false) String boardCode
+    ) {
+        return communityService.getTrendingKeywords(scope, aptId, boardCode);
     }
 
     @GetMapping("/{aptId}/keywords")
     public List<String> getTrendingKeywords(@PathVariable Long aptId) {
-        return communityService.getTrendingKeywords(aptId);
+        return communityService.getTrendingKeywords("APARTMENT", aptId, null);
     }
 
     @GetMapping("/posts/{postId}/comments")
@@ -70,8 +89,12 @@ public class CommunityController {
     }
 
     @PostMapping("/posts/{postId}/comments")
-    public CommentDto createComment(@PathVariable Long postId, @RequestBody CreateCommentRequest request) {
-        return communityService.createComment(postId, request);
+    public CommentDto createComment(
+            @PathVariable Long postId,
+            @RequestBody CreateCommentRequest request,
+            Authentication authentication
+    ) {
+        return communityService.createComment(postId, request, authentication);
     }
 
     @DeleteMapping("/posts/{postId}")
@@ -87,8 +110,8 @@ public class CommunityController {
     }
 
     @PostMapping("/posts/{postId}/like")
-    public LikeToggleResponse toggleLike(@PathVariable Long postId, @RequestBody Map<String, String> body) {
-        return communityService.toggleLike(postId, body.get("authorNickname"));
+    public LikeToggleResponse toggleLike(@PathVariable Long postId, Authentication authentication) {
+        return communityService.toggleLike(postId, authentication);
     }
 
     @GetMapping("/my/posts")

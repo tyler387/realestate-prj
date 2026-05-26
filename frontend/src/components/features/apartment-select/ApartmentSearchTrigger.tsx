@@ -1,10 +1,21 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useUserStore } from '../../../stores/userStore'
+import { usePostStore } from '../../../stores/postStore'
 import { ApartmentSelectModal } from './ApartmentSelectModal'
+import { buildCommunitySearchParams } from '../../../utils/communityUrl'
+import { DEFAULT_APARTMENT_BOARD, isBoardCodeForScope } from '../../../constants/communityBoards'
 
 export const ApartmentSearchTrigger = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [, setSearchParams] = useSearchParams()
   const apartmentName = useUserStore(s => s.apartmentName)
+  const { boardCode, sortType } = usePostStore()
+
+  const handleSelectApartment = (apartmentId: number) => {
+    const nextBoardCode = isBoardCodeForScope('APARTMENT', boardCode) ? boardCode : DEFAULT_APARTMENT_BOARD
+    setSearchParams(buildCommunitySearchParams('APARTMENT', nextBoardCode, sortType, apartmentId), { replace: true })
+  }
 
   return (
     <>
@@ -22,7 +33,10 @@ export const ApartmentSearchTrigger = () => {
       </button>
 
       {isModalOpen && (
-        <ApartmentSelectModal onClose={() => setIsModalOpen(false)} />
+        <ApartmentSelectModal
+          onClose={() => setIsModalOpen(false)}
+          onSelectApartment={handleSelectApartment}
+        />
       )}
     </>
   )

@@ -25,7 +25,7 @@ public class PostViewLog {
     @Column(name = "post_id", nullable = false)
     private Long postId;
 
-    @Column(name = "apt_id", nullable = false)
+    @Column(name = "apt_id")
     private Long aptId;
 
     @Column(name = "created_at", nullable = false)

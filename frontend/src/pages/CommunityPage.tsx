@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { CategoryFilter } from '../components/features/community/CategoryFilter'
 import { SortDropdown } from '../components/features/community/SortDropdown'
 import { PostList } from '../components/features/community/PostList'
@@ -17,34 +18,133 @@ import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
 import { usePostStore } from '../stores/postStore'
 import { fetchPosts } from '../services/communityService'
+import {
+  DEFAULT_COMMUNITY_SCOPE,
+  DEFAULT_SORT_TYPE,
+  defaultBoardForScope,
+  isBoardCodeForScope,
+  isCommunityScope,
+  isSortType,
+} from '../constants/communityBoards'
+import { buildCommunitySearchParams } from '../utils/communityUrl'
+
+const toPositiveNumber = (value: string | null) => {
+  if (!value) return null
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
 
 export const CommunityPage = () => {
-  const { apartmentId, status } = useUserStore()
-  const { selectedCategory, sortType, resetFilters } = usePostStore()
+  const { apartmentId, apartmentName, status, setUser } = useUserStore()
+  const { scope, boardCode, sortType, setCommunityState } = usePostStore()
   const { searchKeyword, setSearchKeyword, resetCommunityFilters } = useUiStore()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [isBannerVisible, setIsBannerVisible] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const prevAptIdRef = useRef<number | null | undefined>(undefined)
+  const pendingUrlAptIdRef = useRef<number | null>(null)
+  const pendingUserAptIdRef = useRef<number | null>(null)
+  const searchParamKey = searchParams.toString()
+  const rawScope = searchParams.get('scope')
+  const urlScope = isCommunityScope(rawScope)
+    ? rawScope
+    : DEFAULT_COMMUNITY_SCOPE
+  const rawBoardCode = searchParams.get('boardCode')
+  const urlBoardCode = isBoardCodeForScope(urlScope, rawBoardCode)
+    ? rawBoardCode
+    : defaultBoardForScope(urlScope)
+  const rawSortType = searchParams.get('sortType')
+  const urlSortType = isSortType(rawSortType)
+    ? rawSortType
+    : DEFAULT_SORT_TYPE
+  const urlAptId = toPositiveNumber(searchParams.get('aptId'))
+  const shouldPreferUserAptId = pendingUserAptIdRef.current != null && apartmentId === pendingUserAptIdRef.current
+  const activeAptId = scope === 'APARTMENT'
+    ? shouldPreferUserAptId ? apartmentId : urlAptId ?? apartmentId
+    : null
+
+  useEffect(() => {
+    if (scope !== urlScope || boardCode !== urlBoardCode || sortType !== urlSortType) {
+      setCommunityState({ scope: urlScope, boardCode: urlBoardCode, sortType: urlSortType })
+    }
+  }, [boardCode, scope, setCommunityState, sortType, urlBoardCode, urlScope, urlSortType])
+
+  useEffect(() => {
+    if (
+      pendingUserAptIdRef.current != null
+      && apartmentId === pendingUserAptIdRef.current
+      && urlAptId !== pendingUserAptIdRef.current
+    ) {
+      return
+    }
+    if (urlScope === 'APARTMENT' && urlAptId != null && apartmentId !== urlAptId) {
+      pendingUrlAptIdRef.current = urlAptId
+      setUser({
+        apartmentId: urlAptId,
+        apartmentName: apartmentId === urlAptId ? apartmentName : null,
+      })
+    }
+  }, [apartmentId, apartmentName, setUser, urlAptId, urlScope])
+
+  useEffect(() => {
+    if (pendingUrlAptIdRef.current != null && apartmentId === pendingUrlAptIdRef.current) {
+      pendingUrlAptIdRef.current = null
+    }
+  }, [apartmentId])
+
+  useEffect(() => {
+    if (pendingUserAptIdRef.current != null && urlAptId === pendingUserAptIdRef.current) {
+      pendingUserAptIdRef.current = null
+    }
+  }, [urlAptId])
+
+  useEffect(() => {
+    if (scope !== urlScope || boardCode !== urlBoardCode || sortType !== urlSortType) return
+    if (
+      scope === 'APARTMENT'
+      && urlAptId != null
+      && apartmentId !== urlAptId
+      && pendingUrlAptIdRef.current === urlAptId
+    ) {
+      return
+    }
+
+    const nextAptId = scope === 'APARTMENT' ? apartmentId ?? urlAptId : null
+    const nextParams = buildCommunitySearchParams(scope, boardCode, sortType, nextAptId)
+    if (nextParams.toString() !== searchParamKey) {
+      setSearchParams(nextParams, { replace: true })
+    }
+  }, [
+    apartmentId,
+    boardCode,
+    scope,
+    searchParamKey,
+    setSearchParams,
+    sortType,
+    urlAptId,
+    urlBoardCode,
+    urlScope,
+    urlSortType,
+  ])
 
   useEffect(() => {
     if (prevAptIdRef.current === undefined) {
-      prevAptIdRef.current = apartmentId
+      prevAptIdRef.current = activeAptId
       return
     }
-    if (prevAptIdRef.current !== apartmentId) {
-      prevAptIdRef.current = apartmentId
+    if (prevAptIdRef.current !== activeAptId) {
+      prevAptIdRef.current = activeAptId
       resetCommunityFilters()
-      resetFilters()
       setIsBannerVisible(true)
     }
-  }, [apartmentId, resetCommunityFilters, resetFilters])
+  }, [activeAptId, resetCommunityFilters])
 
   const { data: posts = [], isLoading, isError } = useQuery({
-    queryKey: ['community', 'posts', apartmentId, selectedCategory, sortType],
-    queryFn: () => fetchPosts(apartmentId, selectedCategory, sortType),
-    enabled: apartmentId != null,
+    queryKey: ['community', 'posts', scope, activeAptId, boardCode, sortType],
+    queryFn: () => fetchPosts(scope, activeAptId, boardCode, sortType),
+    enabled: scope === 'GLOBAL' || activeAptId != null,
     staleTime: 1000 * 60 * 5,
   })
 
@@ -53,7 +153,7 @@ export const CommunityPage = () => {
     : posts
 
   const renderBanner = () => {
-    if (apartmentId == null) {
+    if (scope === 'APARTMENT' && activeAptId == null) {
       return <AptSelectPromptBanner />
     }
     if (status === 'GUEST' && isBannerVisible) {
@@ -63,7 +163,7 @@ export const CommunityPage = () => {
   }
 
   const renderFeed = () => {
-    if (apartmentId == null) return null
+    if (scope === 'APARTMENT' && activeAptId == null) return null
     if (isLoading) return <PostCardSkeleton />
     if (isError) return <EmptyState icon="⚠️" title="데이터를 불러올 수 없습니다" />
     if (filteredPosts.length === 0) {
@@ -77,15 +177,23 @@ export const CommunityPage = () => {
     return <PostList posts={filteredPosts} />
   }
 
-  const aptId = apartmentId != null ? String(apartmentId) : ''
+  const aptId = activeAptId != null ? String(activeAptId) : ''
+
+  const handleApartmentSelect = (nextAptId: number) => {
+    pendingUserAptIdRef.current = nextAptId
+    const nextParams = buildCommunitySearchParams('APARTMENT', boardCode, sortType, nextAptId)
+    setSearchParams(nextParams, { replace: true })
+  }
 
   return (
     <div className="flex flex-col pb-24">
       {renderBanner()}
 
-      <div className="px-4 pt-3">
-        <MobileApartmentTrigger onClick={() => setIsModalOpen(true)} />
-      </div>
+      {scope === 'APARTMENT' && (
+        <div className="px-4 pt-3">
+          <MobileApartmentTrigger onClick={() => setIsModalOpen(true)} />
+        </div>
+      )}
 
       <CategoryFilter />
 
@@ -109,16 +217,21 @@ export const CommunityPage = () => {
 
       {renderFeed()}
 
-      {apartmentId != null && (
+      {(scope === 'GLOBAL' || activeAptId != null) && (
         <section className="space-y-3 px-4 pt-4 lg:hidden">
-          <ApartmentInfoCard aptId={aptId} />
-          <TrendingKeywords aptId={aptId} />
-          <PopularPosts aptId={aptId} />
-          <MostCommentedPosts aptId={aptId} />
+          {scope === 'APARTMENT' && <ApartmentInfoCard aptId={aptId} />}
+          <TrendingKeywords scope={scope} aptId={aptId} boardCode={boardCode} />
+          <PopularPosts scope={scope} aptId={aptId} boardCode={boardCode} />
+          <MostCommentedPosts scope={scope} aptId={aptId} boardCode={boardCode} />
         </section>
       )}
 
-      {isModalOpen && <ApartmentSelectModal onClose={() => setIsModalOpen(false)} />}
+      {isModalOpen && (
+        <ApartmentSelectModal
+          onClose={() => setIsModalOpen(false)}
+          onSelectApartment={handleApartmentSelect}
+        />
+      )}
     </div>
   )
 }

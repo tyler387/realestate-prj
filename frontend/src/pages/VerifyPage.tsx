@@ -3,7 +3,7 @@ import { ApartmentList } from '../components/features/verify/ApartmentList'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
-import { authApi } from '../services/authService'
+import { authApi, tokenStorage } from '../services/authService'
 
 export const VerifyPage = () => {
   const [query, setQuery] = useState('')
@@ -18,6 +18,7 @@ export const VerifyPage = () => {
     setIsVerifying(true)
     try {
       const res = await authApi.verify(apartment.id, apartment.name)
+      tokenStorage.set(res.token)
       setUser({
         userId:                res.userId,
         nickname:              res.nickname,

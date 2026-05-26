@@ -28,7 +28,7 @@ public class PostLikeLog {
     @Column(name = "author_nickname", nullable = false, length = 60)
     private String authorNickname;
 
-    @Column(name = "apt_id", nullable = false)
+    @Column(name = "apt_id")
     private Long aptId;
 
     @Column(name = "created_at", nullable = false)

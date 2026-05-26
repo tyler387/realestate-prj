@@ -10,6 +10,7 @@ import { AuthBottomSheet } from '../common/AuthBottomSheet'
 import { Toast } from '../common/Toast'
 import { useUiStore } from '../../stores/uiStore'
 import { useUserStore } from '../../stores/userStore'
+import { usePostStore } from '../../stores/postStore'
 
 export const AppLayout = () => {
   const navigate = useNavigate()
@@ -17,6 +18,7 @@ export const AppLayout = () => {
 
   const status = useUserStore((s) => s.status)
   const { apartmentId } = useUserStore()
+  const { scope, boardCode } = usePostStore()
   const isAuthSheetOpen = useUiStore((s) => s.isAuthSheetOpen)
   const closeAuthSheet = useUiStore((s) => s.closeAuthSheet)
 
@@ -43,7 +45,7 @@ export const AppLayout = () => {
       <div className="flex flex-1 justify-center overflow-hidden">
         {showLeft && (
           <aside className="modern-scroll hidden w-[280px] shrink-0 overflow-y-auto pb-4 pl-2 pr-4 pt-4 lg:block">
-            {showCommLeft  && <LeftSidebar aptId={aptId} />}
+            {showCommLeft  && <LeftSidebar scope={scope} aptId={aptId} boardCode={boardCode} />}
             {showTradeLeft && <TradeLeftSidebar />}
           </aside>
         )}
@@ -79,7 +81,7 @@ export const AppLayout = () => {
 
         {showRight && (
           <aside className="modern-scroll hidden w-[280px] shrink-0 overflow-y-auto pb-4 pl-4 pr-2 pt-4 lg:block">
-            {showCommRight  && <RightSidebar aptId={aptId} />}
+            {showCommRight  && <RightSidebar scope={scope} aptId={aptId} boardCode={boardCode} />}
             {showTradeRight && <TradeRightSidebar />}
           </aside>
         )}

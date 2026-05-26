@@ -4,6 +4,9 @@ import { Badge } from '../../common/Badge'
 
 export const PostCard = ({ post }: { post: Post }) => {
   const navigate = useNavigate()
+  const verificationLabel = post.authorVerifiedAptName
+    ? `인증 · ${post.authorVerifiedAptName}`
+    : post.authorVerificationLabel ?? post.complexName
 
   return (
     <div
@@ -18,7 +21,9 @@ export const PostCard = ({ post }: { post: Post }) => {
       <div className="flex items-center justify-between text-xs text-gray-400">
         <span className="flex items-center gap-1.5">
           <span>{post.authorNickname}</span>
-          <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-500">{post.complexName}</span>
+          <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-500">
+            {verificationLabel}
+          </span>
           <span>· {post.createdAt}</span>
         </span>
         <div className="flex gap-3">

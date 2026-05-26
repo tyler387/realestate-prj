@@ -10,15 +10,16 @@ type Props = {
 
 export const CommentItem = ({ comment, isOwner, onDelete }: Props) => {
   const [showConfirm, setShowConfirm] = useState(false)
+  const verificationLabel = comment.authorAptName ? `인증 · ${comment.authorAptName}` : null
 
   return (
     <div className="border-b border-gray-100 px-4 py-3">
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <span className="font-medium text-gray-600">{comment.authorNickname}</span>
-          {comment.authorAptName && (
+          {verificationLabel && (
             <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-500">
-              {comment.authorAptName}
+              {verificationLabel}
             </span>
           )}
           <span>·</span>

@@ -1,8 +1,20 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ApartmentSelectModal } from '../apartment-select/ApartmentSelectModal'
+import { usePostStore } from '../../../stores/postStore'
+import { DEFAULT_APARTMENT_BOARD, isBoardCodeForScope } from '../../../constants/communityBoards'
+import { buildCommunitySearchParams } from '../../../utils/communityUrl'
 
 export const AptSelectPromptBanner = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [, setSearchParams] = useSearchParams()
+  const { boardCode, sortType, setCommunityState } = usePostStore()
+
+  const handleSelectApartment = (apartmentId: number) => {
+    const nextBoardCode = isBoardCodeForScope('APARTMENT', boardCode) ? boardCode : DEFAULT_APARTMENT_BOARD
+    setCommunityState({ scope: 'APARTMENT', boardCode: nextBoardCode, sortType })
+    setSearchParams(buildCommunitySearchParams('APARTMENT', nextBoardCode, sortType, apartmentId), { replace: true })
+  }
 
   return (
     <>
@@ -22,7 +34,10 @@ export const AptSelectPromptBanner = () => {
       </div>
 
       {isModalOpen && (
-        <ApartmentSelectModal onClose={() => setIsModalOpen(false)} />
+        <ApartmentSelectModal
+          onClose={() => setIsModalOpen(false)}
+          onSelectApartment={handleSelectApartment}
+        />
       )}
     </>
   )

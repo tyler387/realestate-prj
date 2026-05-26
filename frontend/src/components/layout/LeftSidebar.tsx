@@ -1,11 +1,22 @@
 import { ApartmentInfoCard } from '../features/sidebar/ApartmentInfoCard'
 import { TrendingKeywords } from '../features/sidebar/TrendingKeywords'
 import { ApartmentSearchTrigger } from '../features/apartment-select/ApartmentSearchTrigger'
+import type { BoardCode, CommunityScope } from '../../types'
 
-export const LeftSidebar = ({ aptId }: { aptId: string }) => (
+type Props = {
+  scope: CommunityScope
+  aptId: string
+  boardCode: BoardCode
+}
+
+export const LeftSidebar = ({ scope, aptId, boardCode }: Props) => (
   <div>
-    <ApartmentSearchTrigger />
-    <ApartmentInfoCard aptId={aptId} />
-    <TrendingKeywords aptId={aptId} />
+    {scope === 'APARTMENT' && (
+      <>
+        <ApartmentSearchTrigger />
+        <ApartmentInfoCard aptId={aptId} />
+      </>
+    )}
+    <TrendingKeywords scope={scope} aptId={aptId} boardCode={boardCode} />
   </div>
 )

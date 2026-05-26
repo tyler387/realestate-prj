@@ -2,9 +2,16 @@
 import { SidebarCard } from './SidebarCard'
 import { PostListSkeleton, ErrorMessage } from './SidebarSkeleton'
 import { CommentedPostItem } from './CommentedPostItem'
+import type { BoardCode, CommunityScope } from '../../../types'
 
-export const MostCommentedPosts = ({ aptId }: { aptId: string }) => {
-  const { data, isLoading, isError } = useMostCommentedPosts(aptId)
+type Props = {
+  scope: CommunityScope
+  aptId: string
+  boardCode: BoardCode
+}
+
+export const MostCommentedPosts = ({ scope, aptId, boardCode }: Props) => {
+  const { data, isLoading, isError } = useMostCommentedPosts(scope, aptId, boardCode)
 
   return (
     <SidebarCard className="p-4 lg:p-5">

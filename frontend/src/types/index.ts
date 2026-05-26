@@ -3,15 +3,24 @@
 export type Category = string
 export type SortType = string
 export type AuthStatus = 'GUEST' | 'MEMBER' | 'VERIFIED'
+export type CommunityScope = 'GLOBAL' | 'APARTMENT'
+export type GlobalBoardCode = 'BLAH' | 'REAL_ESTATE' | 'STOCK' | 'DATING'
+export type ApartmentBoardCode = 'APT_ALL' | 'APT_FREE' | 'APT_QNA' | 'APT_INFO' | 'APT_TRADE' | 'APT_ISSUE'
+export type BoardCode = GlobalBoardCode | ApartmentBoardCode
 
 export type Post = {
   id: number
   aptId?: number
+  boardScope?: CommunityScope
+  boardCode?: BoardCode
   category: string
   title: string
   content: string
   authorNickname: string
   complexName: string
+  authorVerifiedAptId?: number | null
+  authorVerifiedAptName?: string | null
+  authorVerificationLabel?: string | null
   createdAt: string
   likeCount: number
   commentCount: number

@@ -1,6 +1,7 @@
 ﻿import { useLocation, useNavigate } from 'react-router-dom'
 import { useUiStore } from '../../stores/uiStore'
 import { useUserStore } from '../../stores/userStore'
+import { tokenStorage } from '../../services/authService'
 
 const HIDDEN_PATHS = ['/map', '/post', '/write', '/verify', '/login', '/signup', '/trade', '/trade/search', '/trade/apartment']
 
@@ -14,7 +15,7 @@ export const FloatingWriteButton = () => {
   if (isHidden) return null
 
   const handleClick = () => {
-    if (status === 'VERIFIED') {
+    if (status === 'VERIFIED' && tokenStorage.get()) {
       navigate('/write')
       return
     }
