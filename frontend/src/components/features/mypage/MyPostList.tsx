@@ -6,6 +6,7 @@ import { fetchMyPosts, deletePost } from '../../../services/communityService'
 import { EmptyState } from '../../common/EmptyState'
 import { ConfirmDialog } from '../../common/ConfirmDialog'
 import { useUiStore } from '../../../stores/uiStore'
+import { communityLocationLabel } from '../../../utils/communityLabels'
 
 export const MyPostList = () => {
   const nickname = useUserStore((s) => s.nickname)
@@ -42,7 +43,7 @@ export const MyPostList = () => {
             className="flex-1 px-4 py-3 text-left hover:bg-gray-50"
           >
             <div className="mb-1 flex items-center gap-1 text-xs text-gray-400">
-              <span>{post.category}</span>
+              <span>{communityLocationLabel(post.boardScope, post.boardCode, post.category)}</span>
               <span>·</span>
               <span>{post.createdAt}</span>
             </div>

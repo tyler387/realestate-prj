@@ -34,22 +34,30 @@ public class KeywordLog {
     @Column(name = "apt_id")
     private Long aptId;
 
+    @Column(name = "board_scope", nullable = false, length = 20)
+    private String boardScope;
+
+    @Column(name = "board_code", nullable = false, length = 40)
+    private String boardCode;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    private KeywordLog(String keyword, String source, Long postId, Long aptId) {
+    private KeywordLog(String keyword, String source, Long postId, Long aptId, String boardScope, String boardCode) {
         this.keyword = keyword;
         this.source = source;
         this.postId = postId;
         this.aptId = aptId;
+        this.boardScope = boardScope;
+        this.boardCode = boardCode;
     }
 
-    public static KeywordLog ofPost(String keyword, Long postId, Long aptId) {
-        return new KeywordLog(keyword, "POST", postId, aptId);
+    public static KeywordLog ofPost(String keyword, Long postId, Long aptId, String boardScope, String boardCode) {
+        return new KeywordLog(keyword, "POST", postId, aptId, boardScope, boardCode);
     }
 
-    public static KeywordLog ofSearch(String keyword, Long aptId) {
-        return new KeywordLog(keyword, "SEARCH", null, aptId);
+    public static KeywordLog ofSearch(String keyword, Long aptId, String boardScope, String boardCode) {
+        return new KeywordLog(keyword, "SEARCH", null, aptId, boardScope, boardCode);
     }
 
     @PrePersist

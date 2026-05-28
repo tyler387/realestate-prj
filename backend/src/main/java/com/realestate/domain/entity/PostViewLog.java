@@ -28,16 +28,24 @@ public class PostViewLog {
     @Column(name = "apt_id")
     private Long aptId;
 
+    @Column(name = "board_scope", nullable = false, length = 20)
+    private String boardScope;
+
+    @Column(name = "board_code", nullable = false, length = 40)
+    private String boardCode;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    private PostViewLog(Long postId, Long aptId) {
+    private PostViewLog(Long postId, Long aptId, String boardScope, String boardCode) {
         this.postId = postId;
         this.aptId = aptId;
+        this.boardScope = boardScope;
+        this.boardCode = boardCode;
     }
 
-    public static PostViewLog create(Long postId, Long aptId) {
-        return new PostViewLog(postId, aptId);
+    public static PostViewLog create(Long postId, Long aptId, String boardScope, String boardCode) {
+        return new PostViewLog(postId, aptId, boardScope, boardCode);
     }
 
     @PrePersist

@@ -42,7 +42,7 @@ export const ApartmentTradePage = () => {
 
   const handleFavoriteToggle = () => {
     if (status === 'GUEST') {
-      openAuthSheet()
+      openAuthSheet('favorite')
       return
     }
     setIsFavorite((value) => !value)

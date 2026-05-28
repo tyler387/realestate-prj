@@ -26,7 +26,7 @@ export const apartmentBoards: Array<{ value: BoardCode; label: string }> = [
   { value: 'APT_ISSUE', label: '민원/하자' },
 ]
 
-export const communitySortTypes: SortType[] = ['최신순', '인기순']
+export const communitySortTypes: SortType[] = ['최신순', '인기순', '댓글순']
 
 export const isCommunityScope = (value: string | null): value is CommunityScope =>
   value === 'GLOBAL' || value === 'APARTMENT'

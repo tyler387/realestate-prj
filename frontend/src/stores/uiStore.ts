@@ -9,6 +9,7 @@ type ToastState = {
 }
 
 export type TradePeriod = '1m' | '3m' | '6m' | '12m' | 'custom'
+export type AuthSheetAction = 'write' | 'comment' | 'like' | 'favorite'
 
 type UiStore = {
   selectedApartmentId:    number | null
@@ -21,7 +22,8 @@ type UiStore = {
   searchKeyword:          string | null
   setSearchKeyword:       (kw: string | null) => void
   isAuthSheetOpen:        boolean
-  openAuthSheet:          () => void
+  authSheetAction:        AuthSheetAction
+  openAuthSheet:          (action?: AuthSheetAction) => void
   closeAuthSheet:         () => void
   toast:                  ToastState | null
   showToast:              (message: string, type?: ToastType) => void
@@ -39,9 +41,11 @@ export const useUiStore = create<UiStore>((set) => ({
   setTradeCustomDateRange: (tradeCustomStartDate, tradeCustomEndDate) =>
     set({ tradeCustomStartDate, tradeCustomEndDate }),
   searchKeyword:          null,
-  setSearchKeyword:       (searchKeyword) => set({ searchKeyword }),
+  setSearchKeyword:       (searchKeyword) => set({ searchKeyword: searchKeyword?.trim() || null }),
   isAuthSheetOpen:        false,
-  openAuthSheet:          () => set({ isAuthSheetOpen: true }),
+  authSheetAction:        'write',
+  // Keep the blocked action so the auth CTA can match write/comment/like flows.
+  openAuthSheet:          (authSheetAction = 'write') => set({ isAuthSheetOpen: true, authSheetAction }),
   closeAuthSheet:         () => set({ isAuthSheetOpen: false }),
   toast:                  null,
   showToast: (message, type = 'info') =>

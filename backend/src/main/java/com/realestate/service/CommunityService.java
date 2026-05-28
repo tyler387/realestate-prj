@@ -39,6 +39,7 @@ public class CommunityService {
 
     private static final String CATEGORY_ALL = "전체";
     private static final String SORT_POPULAR = "인기순";
+    private static final String SORT_COMMENT = "댓글순";
     private static final String SCOPE_GLOBAL = "GLOBAL";
     private static final String SCOPE_APARTMENT = "APARTMENT";
     private static final String BOARD_GLOBAL_DEFAULT = "BLAH";
@@ -85,6 +86,13 @@ public class CommunityService {
                             .reversed()
                             .thenComparing(CommunityPost::getCreatedAt, Comparator.reverseOrder()))
                     .toList();
+        } else if (SORT_COMMENT.equals(normalizedSort)) {
+            posts = posts.stream()
+                    .sorted(Comparator
+                            .comparingInt(CommunityPost::getCommentCount)
+                            .reversed()
+                            .thenComparing(CommunityPost::getCreatedAt, Comparator.reverseOrder()))
+                    .toList();
         }
 
         return posts.stream().map(this::toDto).toList();
@@ -95,7 +103,8 @@ public class CommunityService {
     public CommunityPostDto getPost(Long id, String nickname) {
         CommunityPost post = communityPostRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
-        postViewLogRepository.save(PostViewLog.create(post.getId(), post.getAptId()));
+        postViewLogRepository.save(PostViewLog.create(post.getId(), post.getAptId(), post.getBoardScope(), post.getBoardCode()));
+        postStatsRepository.incrementViewCount(post.getId());
         boolean liked = nickname != null && postLikeLogRepository.existsByPostIdAndAuthorNickname(id, nickname);
         return toDto(post, liked);
     }
@@ -103,14 +112,18 @@ public class CommunityService {
     // 작성 시 keyword_logs 기록 (PRD §11.4)
     @Transactional
     public CommunityPostDto createPost(CreateCommunityPostRequest request, Authentication authentication) {
-        User user = requireVerifiedUser(authentication);
+        User user = requireAuthenticatedUser(authentication);
         validateCreateRequest(request, user);
         Long requestedAptId = firstNonNull(request.aptId(), user.getApartmentId());
         String scope = normalizeScope(request.scope(), requestedAptId);
+        if (SCOPE_APARTMENT.equals(scope)) {
+            requireVerifiedUser(user);
+        }
         String boardCode = resolveBoardCodeForCreate(scope, request.boardCode(), request.category());
         String category = resolveCategoryLabel(scope, boardCode, request.category());
         Long aptId = SCOPE_APARTMENT.equals(scope) ? requestedAptId : null;
-        String verifiedAptName = user.getApartmentName();
+        Long verifiedAptId = isVerifiedUser(user) ? user.getApartmentId() : null;
+        String verifiedAptName = isVerifiedUser(user) ? user.getApartmentName() : null;
         String verificationLabel = isBlank(verifiedAptName) ? null : "아파트 인증: " + verifiedAptName.trim();
         CommunityPost created = communityPostRepository.save(
                 CommunityPost.create(
@@ -121,52 +134,70 @@ public class CommunityService {
                         request.title().trim(),
                         request.content().trim(),
                         user.getNickname(),
-                        firstNonBlank(verifiedAptName, request.complexName(), "아파트"),
+                        firstNonBlank(verifiedAptName, SCOPE_GLOBAL.equals(scope) ? "전체 커뮤니티" : request.complexName(), "아파트"),
                         user.getId(),
-                        user.getApartmentId(),
+                        verifiedAptId,
                         verifiedAptName,
                         verificationLabel
                 )
         );
+        postStatsRepository.upsertFromPost(created.getId());
 
         List<KeywordLog> keywordLogs = extractKeywords(created.getTitle(), created.getContent())
                 .stream()
-                .map(kw -> KeywordLog.ofPost(kw, created.getId(), created.getAptId()))
+                .map(kw -> KeywordLog.ofPost(kw, created.getId(), created.getAptId(), created.getBoardScope(), created.getBoardCode()))
                 .toList();
         if (!keywordLogs.isEmpty()) {
             keywordLogRepository.saveAll(keywordLogs);
+            keywordLogs.forEach(log ->
+                    keywordStatsRepository.incrementKeyword(
+                            log.getKeyword(),
+                            log.getAptId(),
+                            log.getBoardScope(),
+                            log.getBoardCode(),
+                            scopeAptKey(log.getAptId())));
         }
 
         return toDto(created);
     }
 
-    // posts 테이블 기반 — score(좋아요*2+댓글) 내림차순 Top 5
+    // post_stats 기반 — scope/board/apt가 섞이지 않도록 랭킹 집계 테이블에서 Top 5를 읽는다.
     @Transactional(readOnly = true)
     public List<CommunityPostDto> getPopularPosts(String scope, Long aptId, String boardCode) {
         String normalizedScope = normalizeScope(scope, aptId);
         String normalizedBoardCode = resolveBoardCodeFilter(normalizedScope, boardCode, null);
         if (SCOPE_GLOBAL.equals(normalizedScope)) {
+            List<CommunityPost> ranked = communityPostRepository.findRankedPopularByScope(SCOPE_GLOBAL, normalizedBoardCode, 5);
+            if (!ranked.isEmpty()) return ranked.stream().map(this::toDto).toList();
             return communityPostRepository.findPopularByScope(SCOPE_GLOBAL, normalizedBoardCode, PageRequest.of(0, 5))
                     .stream().map(this::toDto).toList();
         }
         validateAptId(aptId);
+        List<CommunityPost> ranked = communityPostRepository.findRankedPopularByScopeAndAptId(
+                SCOPE_APARTMENT, aptId, normalizedBoardCode, 5);
+        if (!ranked.isEmpty()) return ranked.stream().map(this::toDto).toList();
         return communityPostRepository.findPopularByScopeAndAptId(
-                        SCOPE_APARTMENT, aptId, normalizedBoardCode, PageRequest.of(0, 5))
+                SCOPE_APARTMENT, aptId, normalizedBoardCode, PageRequest.of(0, 5))
                 .stream().map(this::toDto).toList();
     }
 
-    // posts 테이블 기반 — 댓글 수 내림차순 Top 5
+    // post_stats 기반 — 댓글 수 내림차순 Top 5
     @Transactional(readOnly = true)
     public List<CommunityPostDto> getMostCommentedPosts(String scope, Long aptId, String boardCode) {
         String normalizedScope = normalizeScope(scope, aptId);
         String normalizedBoardCode = resolveBoardCodeFilter(normalizedScope, boardCode, null);
         if (SCOPE_GLOBAL.equals(normalizedScope)) {
+            List<CommunityPost> ranked = communityPostRepository.findRankedMostCommentedByScope(SCOPE_GLOBAL, normalizedBoardCode, 5);
+            if (!ranked.isEmpty()) return ranked.stream().map(this::toDto).toList();
             return communityPostRepository.findMostCommentedByScope(SCOPE_GLOBAL, normalizedBoardCode, PageRequest.of(0, 5))
                     .stream().map(this::toDto).toList();
         }
         validateAptId(aptId);
+        List<CommunityPost> ranked = communityPostRepository.findRankedMostCommentedByScopeAndAptId(
+                SCOPE_APARTMENT, aptId, normalizedBoardCode, 5);
+        if (!ranked.isEmpty()) return ranked.stream().map(this::toDto).toList();
         return communityPostRepository.findMostCommentedByScopeAndAptId(
-                        SCOPE_APARTMENT, aptId, normalizedBoardCode, PageRequest.of(0, 5))
+                SCOPE_APARTMENT, aptId, normalizedBoardCode, PageRequest.of(0, 5))
                 .stream().map(this::toDto).toList();
     }
 
@@ -175,14 +206,11 @@ public class CommunityService {
     public List<String> getTrendingKeywords(String scope, Long aptId, String boardCode) {
         String normalizedScope = normalizeScope(scope, aptId);
         String normalizedBoardCode = resolveBoardCodeFilter(normalizedScope, boardCode, null);
-        if (SCOPE_APARTMENT.equals(normalizedScope)) {
-            validateAptId(aptId);
-            if (normalizedBoardCode == null) {
-                List<String> keywords = keywordStatsRepository.findTrendingKeywords(aptId);
-                if (!keywords.isEmpty()) {
-                    return keywords;
-                }
-            }
+        if (SCOPE_APARTMENT.equals(normalizedScope)) validateAptId(aptId);
+
+        List<String> keywords = keywordStatsRepository.findTrendingKeywords(normalizedScope, aptId, normalizedBoardCode);
+        if (!keywords.isEmpty()) {
+            return keywords;
         }
         return extractKeywordsFromPosts(normalizedScope, aptId, normalizedBoardCode);
     }
@@ -207,6 +235,7 @@ public class CommunityService {
                 Comment.create(post.getId(), user.getNickname(), request.content().trim(),
                         user.getApartmentId(), user.getApartmentName()));
         communityPostRepository.incrementCommentCount(postId);
+        postStatsRepository.incrementCommentCount(postId);
         return toCommentDto(saved);
     }
 
@@ -236,6 +265,7 @@ public class CommunityService {
         }
         commentRepository.delete(comment);
         communityPostRepository.decrementCommentCount(comment.getPostId());
+        postStatsRepository.decrementCommentCount(comment.getPostId());
     }
 
     // 좋아요 토글
@@ -249,10 +279,12 @@ public class CommunityService {
         if (alreadyLiked) {
             postLikeLogRepository.deleteByPostIdAndAuthorNickname(postId, authorNickname);
             communityPostRepository.decrementLikeCount(postId);
+            postStatsRepository.decrementLikeCount(postId);
             return new LikeToggleResponse(false, Math.max(0, post.getLikeCount() - 1));
         } else {
-            postLikeLogRepository.save(PostLikeLog.create(postId, authorNickname, post.getAptId()));
+            postLikeLogRepository.save(PostLikeLog.create(postId, authorNickname, post.getAptId(), post.getBoardScope(), post.getBoardCode()));
             communityPostRepository.incrementLikeCount(postId);
+            postStatsRepository.incrementLikeCount(postId);
             return new LikeToggleResponse(true, post.getLikeCount() + 1);
         }
     }
@@ -274,15 +306,26 @@ public class CommunityService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authorNickname is required");
         }
         return commentRepository.findByAuthorNicknameOrderByCreatedAtDesc(authorNickname)
-                .stream().map(this::toCommentDto).toList();
+                .stream().map(comment -> {
+                    CommunityPost post = communityPostRepository.findById(comment.getPostId()).orElse(null);
+                    return toCommentDto(comment, post);
+                }).toList();
     }
 
     // ── private helpers ──────────────────────────────────────
 
     private CommentDto toCommentDto(Comment comment) {
+        return toCommentDto(comment, null);
+    }
+
+    private CommentDto toCommentDto(Comment comment, CommunityPost post) {
         return new CommentDto(
                 comment.getId(),
                 comment.getPostId(),
+                post == null ? null : post.getTitle(),
+                post == null ? null : post.getBoardScope(),
+                post == null ? null : post.getBoardCode(),
+                post == null ? null : post.getCategory(),
                 comment.getAuthorNickname(),
                 comment.getAuthorAptId(),
                 comment.getAuthorAptName(),
@@ -448,6 +491,10 @@ public class CommunityService {
         return null;
     }
 
+    private Long scopeAptKey(Long aptId) {
+        return aptId == null ? -1L : aptId;
+    }
+
     private void validateAptId(Long aptId) {
         if (aptId == null || aptId < 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "aptId is required");
@@ -472,6 +519,18 @@ public class CommunityService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login is required");
         }
         return user;
+    }
+
+    private void requireVerifiedUser(User user) {
+        if (!isVerifiedUser(user)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Apartment verification is required");
+        }
+    }
+
+    private boolean isVerifiedUser(User user) {
+        return user.getStatus() == User.UserStatus.VERIFIED
+                && user.getApartmentId() != null
+                && !isBlank(user.getApartmentName());
     }
 
     private boolean isPostOwner(CommunityPost post, User user) {

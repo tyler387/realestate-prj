@@ -20,6 +20,7 @@ export const AppLayout = () => {
   const { apartmentId } = useUserStore()
   const { scope, boardCode } = usePostStore()
   const isAuthSheetOpen = useUiStore((s) => s.isAuthSheetOpen)
+  const authSheetAction = useUiStore((s) => s.authSheetAction)
   const closeAuthSheet = useUiStore((s) => s.closeAuthSheet)
 
   const canOpenAuthSheet = status === 'GUEST' || status === 'MEMBER'
@@ -60,6 +61,7 @@ export const AppLayout = () => {
             <AuthBottomSheet
               isOpen={isAuthSheetOpen}
               userStatus={status}
+              action={authSheetAction}
               onClose={closeAuthSheet}
               onLogin={() => {
                 closeAuthSheet()

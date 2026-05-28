@@ -19,8 +19,14 @@ public class PostStats {
     @Column(name = "post_id")
     private Long postId;
 
-    @Column(name = "apt_id", nullable = false)
+    @Column(name = "apt_id")
     private Long aptId;
+
+    @Column(name = "board_scope", nullable = false, length = 20)
+    private String boardScope;
+
+    @Column(name = "board_code", nullable = false, length = 40)
+    private String boardCode;
 
     @Column(name = "view_count", nullable = false)
     private Integer viewCount;

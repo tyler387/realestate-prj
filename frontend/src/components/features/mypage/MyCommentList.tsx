@@ -5,6 +5,7 @@ import { fetchMyComments, deleteComment } from '../../../services/communityServi
 import { EmptyState } from '../../common/EmptyState'
 import { ConfirmDialog } from '../../common/ConfirmDialog'
 import { useUiStore } from '../../../stores/uiStore'
+import { communityLocationLabel } from '../../../utils/communityLabels'
 
 export const MyCommentList = () => {
   const nickname = useUserStore((s) => s.nickname)
@@ -35,7 +36,16 @@ export const MyCommentList = () => {
       {comments.map((comment) => (
         <div key={comment.id} className="flex items-center border-b border-gray-100">
           <div className="flex-1 px-4 py-3">
-            <div className="mb-1 text-xs text-gray-400">{comment.createdAt}</div>
+            <div className="mb-1 flex flex-wrap items-center gap-1 text-xs text-gray-400">
+              <span>
+                {communityLocationLabel(comment.postBoardScope, comment.postBoardCode, comment.postCategory)}
+              </span>
+              <span>·</span>
+              <span>{comment.createdAt}</span>
+            </div>
+            {comment.postTitle && (
+              <p className="mb-1 text-xs font-medium text-gray-500 line-clamp-1">{comment.postTitle}</p>
+            )}
             <p className="text-sm text-gray-700">{comment.content}</p>
           </div>
           <button

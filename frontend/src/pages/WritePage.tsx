@@ -16,6 +16,7 @@ export const WritePage = () => {
   const verifiedApartmentName = useUserStore((s) => s.verifiedApartmentName)
   const nickname = useUserStore((s) => s.nickname)
   const userId = useUserStore((s) => s.userId)
+  const status = useUserStore((s) => s.status)
 
   const boards = scope === 'GLOBAL'
     ? boardsForScope(scope)
@@ -26,6 +27,12 @@ export const WritePage = () => {
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const writeContextText = scope === 'GLOBAL'
+    ? status === 'VERIFIED'
+      ? `${verifiedApartmentName ?? apartmentName ?? '아파트'} 인증 계정으로 전체 커뮤니티에 글 작성 중`
+      : '전체 커뮤니티에 글 작성 중'
+    : `${apartmentName ?? '아파트'} 게시판에 글 작성 중`
 
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim() || isSubmitting) return
@@ -43,10 +50,12 @@ export const WritePage = () => {
         title: title.trim(),
         content: content.trim(),
         authorNickname: nickname ?? '익명',
-        complexName: verifiedApartmentName ?? apartmentName ?? '아파트',
+        complexName: scope === 'GLOBAL'
+          ? verifiedApartmentName ?? apartmentName ?? '전체 커뮤니티'
+          : verifiedApartmentName ?? apartmentName ?? '아파트',
         authorUserId: userId,
-        authorVerifiedAptId: verifiedApartmentId ?? apartmentId,
-        authorVerifiedAptName: verifiedApartmentName ?? apartmentName,
+        authorVerifiedAptId: verifiedApartmentId,
+        authorVerifiedAptName: verifiedApartmentName,
       })
       await queryClient.invalidateQueries({ queryKey: ['community', 'posts'] })
       navigate('/')
@@ -61,9 +70,7 @@ export const WritePage = () => {
   return (
     <div className="flex flex-col pb-6">
       <div className="bg-blue-50 px-4 py-3 text-sm text-blue-600">
-        {scope === 'GLOBAL'
-          ? `${verifiedApartmentName ?? apartmentName ?? '아파트'} 인증 계정으로 전체 커뮤니티에 글 작성 중`
-          : `${apartmentName ?? '아파트'} 게시판에 글 작성 중`}
+        {writeContextText}
       </div>
 
       <div className="flex gap-2 overflow-x-auto px-4 py-3">

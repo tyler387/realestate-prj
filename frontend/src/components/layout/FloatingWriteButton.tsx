@@ -1,6 +1,7 @@
 ﻿import { useLocation, useNavigate } from 'react-router-dom'
 import { useUiStore } from '../../stores/uiStore'
 import { useUserStore } from '../../stores/userStore'
+import { usePostStore } from '../../stores/postStore'
 import { tokenStorage } from '../../services/authService'
 
 const HIDDEN_PATHS = ['/map', '/post', '/write', '/verify', '/login', '/signup', '/trade', '/trade/search', '/trade/apartment']
@@ -9,17 +10,18 @@ export const FloatingWriteButton = () => {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const status = useUserStore((s) => s.status)
+  const scope = usePostStore((s) => s.scope)
   const openAuthSheet = useUiStore((s) => s.openAuthSheet)
 
   const isHidden = HIDDEN_PATHS.some((path) => pathname.startsWith(path)) || pathname === '/signup/done'
   if (isHidden) return null
 
   const handleClick = () => {
-    if (status === 'VERIFIED' && tokenStorage.get()) {
+    if ((status === 'VERIFIED' || (status === 'MEMBER' && scope === 'GLOBAL')) && tokenStorage.get()) {
       navigate('/write')
       return
     }
-    openAuthSheet()
+    openAuthSheet('write')
   }
 
   return (

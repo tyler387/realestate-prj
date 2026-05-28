@@ -47,7 +47,7 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
       navigate('/write')
       return
     }
-    openAuthSheet()
+    openAuthSheet('write')
   }
 
   const handleBrowse = () => {

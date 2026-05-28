@@ -43,6 +43,72 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
 
     List<CommunityPost> findByBoardScopeAndAptIdAndBoardCodeOrderByCreatedAtDesc(String boardScope, Long aptId, String boardCode);
 
+    @Query(value = """
+            SELECT p.*
+            FROM posts p
+            JOIN post_stats s ON s.post_id = p.id
+            WHERE s.board_scope = :boardScope
+              AND (:boardCode IS NULL OR s.board_code = :boardCode)
+            ORDER BY s.score DESC, s.post_created_at DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<CommunityPost> findRankedPopularByScope(
+            @Param("boardScope") String boardScope,
+            @Param("boardCode") String boardCode,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+            SELECT p.*
+            FROM posts p
+            JOIN post_stats s ON s.post_id = p.id
+            WHERE s.board_scope = :boardScope
+              AND s.apt_id = :aptId
+              AND (:boardCode IS NULL OR s.board_code = :boardCode)
+            ORDER BY s.score DESC, s.post_created_at DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<CommunityPost> findRankedPopularByScopeAndAptId(
+            @Param("boardScope") String boardScope,
+            @Param("aptId") Long aptId,
+            @Param("boardCode") String boardCode,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+            SELECT p.*
+            FROM posts p
+            JOIN post_stats s ON s.post_id = p.id
+            WHERE s.board_scope = :boardScope
+              AND (:boardCode IS NULL OR s.board_code = :boardCode)
+              AND s.comment_count > 0
+            ORDER BY s.comment_count DESC, s.post_created_at DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<CommunityPost> findRankedMostCommentedByScope(
+            @Param("boardScope") String boardScope,
+            @Param("boardCode") String boardCode,
+            @Param("limit") int limit
+    );
+
+    @Query(value = """
+            SELECT p.*
+            FROM posts p
+            JOIN post_stats s ON s.post_id = p.id
+            WHERE s.board_scope = :boardScope
+              AND s.apt_id = :aptId
+              AND (:boardCode IS NULL OR s.board_code = :boardCode)
+              AND s.comment_count > 0
+            ORDER BY s.comment_count DESC, s.post_created_at DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<CommunityPost> findRankedMostCommentedByScopeAndAptId(
+            @Param("boardScope") String boardScope,
+            @Param("aptId") Long aptId,
+            @Param("boardCode") String boardCode,
+            @Param("limit") int limit
+    );
+
     @Query("""
             SELECT p FROM CommunityPost p
             WHERE p.aptId = :aptId

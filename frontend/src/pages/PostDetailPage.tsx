@@ -108,7 +108,7 @@ export const PostDetailPage = () => {
       <LikeButton
         post={post}
         disabled={!isVerified}
-        onDisabledClick={openAuthSheet}
+        onDisabledClick={() => openAuthSheet('like')}
         onToggle={() => {
           if (nickname) likeMutation.mutate()
         }}
@@ -121,7 +121,7 @@ export const PostDetailPage = () => {
       {isVerified ? (
         <CommentInput onSubmit={(content) => commentMutation.mutate(content)} />
       ) : (
-        <LoginRequiredCommentInput userStatus={sheetStatus} onClick={openAuthSheet} />
+        <LoginRequiredCommentInput userStatus={sheetStatus} onClick={() => openAuthSheet('comment')} />
       )}
     </div>
   )

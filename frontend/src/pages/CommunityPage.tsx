@@ -27,6 +27,7 @@ import {
   isSortType,
 } from '../constants/communityBoards'
 import { buildCommunitySearchParams } from '../utils/communityUrl'
+import { buildCommunitySearchContextKey, filterPostsByKeyword } from '../utils/communitySearch'
 
 const toPositiveNumber = (value: string | null) => {
   if (!value) return null
@@ -43,7 +44,7 @@ export const CommunityPage = () => {
   const [isBannerVisible, setIsBannerVisible] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const prevAptIdRef = useRef<number | null | undefined>(undefined)
+  const prevSearchContextKeyRef = useRef<string | null>(null)
   const lastUrlHydrationKeyRef = useRef<string | null>(null)
   const isHydratingFromUrlRef = useRef(false)
   const pendingUrlAptIdRef = useRef<number | null>(null)
@@ -66,6 +67,7 @@ export const CommunityPage = () => {
   const activeAptId = scope === 'APARTMENT'
     ? shouldPreferUserAptId ? apartmentId : urlAptId ?? apartmentId
     : null
+  const searchContextKey = buildCommunitySearchContextKey(scope, boardCode, activeAptId)
 
   useEffect(() => {
     if (lastUrlHydrationKeyRef.current === searchParamKey) return
@@ -143,16 +145,17 @@ export const CommunityPage = () => {
   ])
 
   useEffect(() => {
-    if (prevAptIdRef.current === undefined) {
-      prevAptIdRef.current = activeAptId
+    if (prevSearchContextKeyRef.current === null) {
+      prevSearchContextKeyRef.current = searchContextKey
       return
     }
-    if (prevAptIdRef.current !== activeAptId) {
-      prevAptIdRef.current = activeAptId
+
+    if (prevSearchContextKeyRef.current !== searchContextKey) {
+      prevSearchContextKeyRef.current = searchContextKey
       resetCommunityFilters()
       setIsBannerVisible(true)
     }
-  }, [activeAptId, resetCommunityFilters])
+  }, [resetCommunityFilters, searchContextKey])
 
   const { data: posts = [], isLoading, isError } = useQuery({
     queryKey: ['community', 'posts', scope, activeAptId, boardCode, sortType],
@@ -161,9 +164,7 @@ export const CommunityPage = () => {
     staleTime: 1000 * 60 * 5,
   })
 
-  const filteredPosts = searchKeyword
-    ? posts.filter((p) => p.title.includes(searchKeyword) || p.content.includes(searchKeyword))
-    : posts
+  const filteredPosts = filterPostsByKeyword(posts, searchKeyword)
 
   const renderBanner = () => {
     if (scope === 'APARTMENT' && activeAptId == null) {

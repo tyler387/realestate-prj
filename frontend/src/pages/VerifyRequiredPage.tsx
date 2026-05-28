@@ -9,6 +9,7 @@ export const VerifyRequiredPage = () => {
       <AuthBottomSheet
         isOpen
         userStatus="MEMBER"
+        action="write"
         onClose={() => navigate(-1)}
         onLogin={() => navigate('/login', { state: { redirectTo: '/write' } })}
         onSignup={() => navigate('/signup')}

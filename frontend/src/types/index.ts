@@ -30,6 +30,10 @@ export type Post = {
 export type Comment = {
   id: number
   postId: number
+  postTitle?: string | null
+  postBoardScope?: CommunityScope | null
+  postBoardCode?: BoardCode | null
+  postCategory?: string | null
   authorNickname: string
   authorAptId?: number | null
   authorAptName?: string | null

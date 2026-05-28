@@ -1,5 +1,6 @@
 import type { BoardCode, Comment, CommunityScope, Post } from '../types'
 import { tokenStorage } from './authService'
+import { toCommunitySearchQueryParam } from '../utils/communitySearch'
 
 type CreatePostParams = {
   scope: CommunityScope
@@ -78,6 +79,7 @@ export const fetchPosts = async (
   aptId: number | null,
   boardCode: BoardCode,
   sortType: string,
+  searchKeyword?: string | null,
 ): Promise<Post[]> => {
   if (scope === 'APARTMENT' && aptId == null) return []
   const params = new URLSearchParams({
@@ -86,6 +88,10 @@ export const fetchPosts = async (
     sortType,
   })
   if (scope === 'APARTMENT' && aptId != null) params.set('aptId', String(aptId))
+  // Backend search is not enabled yet. Keep q wiring here so the page can move
+  // from client filtering to server filtering without changing URL/state shape.
+  const q = toCommunitySearchQueryParam(searchKeyword)
+  if (q) params.set('q', q)
   return requestJson<Post[]>(`/api/community/posts?${params.toString()}`)
 }
 

@@ -1,17 +1,27 @@
 ﻿import { useEffect } from 'react'
+import type { AuthSheetAction } from '../../stores/uiStore'
 
 type AuthBottomSheetProps = {
   isOpen: boolean
   userStatus: 'GUEST' | 'MEMBER'
+  action?: AuthSheetAction
   onClose: () => void
   onLogin: () => void
   onSignup: () => void
   onVerify: () => void
 }
 
+const actionLabels: Record<AuthSheetAction, string> = {
+  write: '글쓰기',
+  comment: '댓글 작성',
+  like: '좋아요',
+  favorite: '관심 단지 등록',
+}
+
 export const AuthBottomSheet = ({
   isOpen,
   userStatus,
+  action = 'write',
   onClose,
   onLogin,
   onSignup,
@@ -29,6 +39,13 @@ export const AuthBottomSheet = ({
   }, [isOpen, onClose])
 
   if (!isOpen) return null
+
+  const actionLabel = actionLabels[action]
+  const guestDescription =
+    action === 'favorite'
+      ? `${actionLabel}은 로그인 후 이용할 수 있어요`
+      : `${actionLabel}은 로그인 후 참여할 수 있어요`
+  const memberDescription = `${actionLabel}은 아파트 인증 후 참여할 수 있어요`
 
   return (
     <>
@@ -48,12 +65,12 @@ export const AuthBottomSheet = ({
         {userStatus === 'GUEST' ? (
           <>
             <h2 className="text-lg font-bold text-gray-900">로그인이 필요해요</h2>
-            <p className="mb-6 mt-1 text-sm text-gray-500">회원만 글을 쓸 수 있어요</p>
+            <p className="mb-6 mt-1 text-sm text-gray-500">{guestDescription}</p>
             <button
               onClick={onLogin}
               className="h-12 w-full rounded-xl bg-blue-500 text-sm font-semibold text-white hover:bg-blue-600"
             >
-              로그인하기
+              로그인하고 참여하기
             </button>
             <button
               onClick={onSignup}
@@ -67,14 +84,13 @@ export const AuthBottomSheet = ({
           </>
         ) : (
           <>
-            <h2 className="text-lg font-bold text-gray-900">거주지 인증이 필요해요</h2>
-            <p className="mt-1 text-sm text-gray-500">내 아파트 주민만</p>
-            <p className="mb-6 text-sm text-gray-500">글을 쓸 수 있어요</p>
+            <h2 className="text-lg font-bold text-gray-900">아파트 인증이 필요해요</h2>
+            <p className="mb-6 mt-1 text-sm text-gray-500">{memberDescription}</p>
             <button
               onClick={onVerify}
               className="h-12 w-full rounded-xl bg-blue-500 text-sm font-semibold text-white hover:bg-blue-600"
             >
-              거주지 인증하기
+              아파트 인증하고 참여하기
             </button>
             <button onClick={onClose} className="mt-2 h-10 w-full text-sm text-gray-400">
               나중에 할게요

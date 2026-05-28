@@ -31,17 +31,25 @@ public class PostLikeLog {
     @Column(name = "apt_id")
     private Long aptId;
 
+    @Column(name = "board_scope", nullable = false, length = 20)
+    private String boardScope;
+
+    @Column(name = "board_code", nullable = false, length = 40)
+    private String boardCode;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    private PostLikeLog(Long postId, String authorNickname, Long aptId) {
+    private PostLikeLog(Long postId, String authorNickname, Long aptId, String boardScope, String boardCode) {
         this.postId = postId;
         this.authorNickname = authorNickname;
         this.aptId = aptId;
+        this.boardScope = boardScope;
+        this.boardCode = boardCode;
     }
 
-    public static PostLikeLog create(Long postId, String authorNickname, Long aptId) {
-        return new PostLikeLog(postId, authorNickname, aptId);
+    public static PostLikeLog create(Long postId, String authorNickname, Long aptId, String boardScope, String boardCode) {
+        return new PostLikeLog(postId, authorNickname, aptId, boardScope, boardCode);
     }
 
     @PrePersist
