@@ -99,14 +99,14 @@ public class CommunityController {
 
     @DeleteMapping("/posts/{postId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletePost(@PathVariable Long postId, @RequestParam String authorNickname) {
-        communityService.deletePost(postId, authorNickname);
+    public void deletePost(@PathVariable Long postId, Authentication authentication) {
+        communityService.deletePost(postId, authentication);
     }
 
     @DeleteMapping("/comments/{commentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteComment(@PathVariable Long commentId, @RequestParam String authorNickname) {
-        communityService.deleteComment(commentId, authorNickname);
+    public void deleteComment(@PathVariable Long commentId, Authentication authentication) {
+        communityService.deleteComment(commentId, authentication);
     }
 
     @PostMapping("/posts/{postId}/like")

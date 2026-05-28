@@ -21,7 +21,7 @@ export const MyPostList = () => {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (postId: number) => deletePost(postId, nickname!),
+    mutationFn: (postId: number) => deletePost(postId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['community', 'my-posts', nickname] })
       queryClient.invalidateQueries({ queryKey: ['community', 'posts'] })

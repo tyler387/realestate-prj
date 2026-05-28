@@ -1,5 +1,24 @@
 package com.realestate.service;
 
+/*
+ * 존재 이유:
+ * - 비밀번호 재설정 토큰 발급/검증/변경 흐름이 보안 요구사항대로 동작하는지 확인한다.
+ *
+ * 왜 필요한가:
+ * - 비밀번호 재설정은 계정 탈취와 직접 연결되는 고위험 기능이다.
+ * - 토큰을 평문으로 저장하거나, 만료 토큰을 허용하거나, 잘못된 사용자에게 존재 여부를 노출하면 보안 사고가 된다.
+ *
+ * 어떻게 쓰는가:
+ * - `./gradlew.bat test --tests com.realestate.service.PasswordResetServiceTest`
+ * - 메일 발송기는 mock으로 대체하고, 토큰 저장/검증/비밀번호 변경 로직만 빠르게 검증한다.
+ *
+ * 막는 장애:
+ * - 가입되지 않은 이메일 요청에서 사용자 존재 여부가 드러나는 문제
+ * - 6자리 인증 코드가 DB에 평문 저장되는 문제
+ * - 만료된 인증 코드로 비밀번호 변경이 가능한 문제
+ * - 정상 인증 후 비밀번호가 갱신되지 않거나 토큰이 사용 처리되지 않는 문제
+ */
+
 import com.realestate.domain.entity.PasswordResetToken;
 import com.realestate.domain.entity.User;
 import com.realestate.domain.repository.PasswordResetTokenRepository;

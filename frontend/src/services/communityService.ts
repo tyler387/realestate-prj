@@ -117,15 +117,11 @@ export const createComment = async (
     body: JSON.stringify({ authorNickname, authorAptId: authorAptId ?? null, authorAptName: authorAptName ?? null, content }),
   })
 
-export const deletePost = async (postId: number, authorNickname: string): Promise<void> => {
-  const params = new URLSearchParams({ authorNickname })
-  return requestVoid(`/api/community/posts/${postId}?${params}`, { method: 'DELETE' })
-}
+export const deletePost = async (postId: number): Promise<void> =>
+  requestVoid(`/api/community/posts/${postId}`, { method: 'DELETE' })
 
-export const deleteComment = async (commentId: number, authorNickname: string): Promise<void> => {
-  const params = new URLSearchParams({ authorNickname })
-  return requestVoid(`/api/community/comments/${commentId}?${params}`, { method: 'DELETE' })
-}
+export const deleteComment = async (commentId: number): Promise<void> =>
+  requestVoid(`/api/community/comments/${commentId}`, { method: 'DELETE' })
 
 export const toggleLike = async (
   postId: number,

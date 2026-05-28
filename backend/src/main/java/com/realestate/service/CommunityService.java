@@ -63,7 +63,7 @@ public class CommunityService {
     public List<CommunityPostDto> getPosts(String scope, Long aptId, String boardCode, String category, String sortType) {
         String normalizedScope = normalizeScope(scope, aptId);
         String normalizedCategory = category == null ? "" : category.trim();
-        String normalizedBoardCode = normalizeBoardCode(normalizedScope, boardCode, normalizedCategory);
+        String normalizedBoardCode = resolveBoardCodeFilter(normalizedScope, boardCode, normalizedCategory);
         String normalizedSort = sortType == null ? "" : sortType.trim();
 
         List<CommunityPost> posts;
@@ -107,7 +107,7 @@ public class CommunityService {
         validateCreateRequest(request, user);
         Long requestedAptId = firstNonNull(request.aptId(), user.getApartmentId());
         String scope = normalizeScope(request.scope(), requestedAptId);
-        String boardCode = normalizeBoardCode(scope, request.boardCode(), request.category());
+        String boardCode = resolveBoardCodeForCreate(scope, request.boardCode(), request.category());
         String category = resolveCategoryLabel(scope, boardCode, request.category());
         Long aptId = SCOPE_APARTMENT.equals(scope) ? requestedAptId : null;
         String verifiedAptName = user.getApartmentName();
@@ -144,7 +144,7 @@ public class CommunityService {
     @Transactional(readOnly = true)
     public List<CommunityPostDto> getPopularPosts(String scope, Long aptId, String boardCode) {
         String normalizedScope = normalizeScope(scope, aptId);
-        String normalizedBoardCode = nullableBoardCode(normalizeBoardCode(normalizedScope, boardCode, null));
+        String normalizedBoardCode = resolveBoardCodeFilter(normalizedScope, boardCode, null);
         if (SCOPE_GLOBAL.equals(normalizedScope)) {
             return communityPostRepository.findPopularByScope(SCOPE_GLOBAL, normalizedBoardCode, PageRequest.of(0, 5))
                     .stream().map(this::toDto).toList();
@@ -159,7 +159,7 @@ public class CommunityService {
     @Transactional(readOnly = true)
     public List<CommunityPostDto> getMostCommentedPosts(String scope, Long aptId, String boardCode) {
         String normalizedScope = normalizeScope(scope, aptId);
-        String normalizedBoardCode = nullableBoardCode(normalizeBoardCode(normalizedScope, boardCode, null));
+        String normalizedBoardCode = resolveBoardCodeFilter(normalizedScope, boardCode, null);
         if (SCOPE_GLOBAL.equals(normalizedScope)) {
             return communityPostRepository.findMostCommentedByScope(SCOPE_GLOBAL, normalizedBoardCode, PageRequest.of(0, 5))
                     .stream().map(this::toDto).toList();
@@ -174,7 +174,7 @@ public class CommunityService {
     @Transactional(readOnly = true)
     public List<String> getTrendingKeywords(String scope, Long aptId, String boardCode) {
         String normalizedScope = normalizeScope(scope, aptId);
-        String normalizedBoardCode = nullableBoardCode(normalizeBoardCode(normalizedScope, boardCode, null));
+        String normalizedBoardCode = resolveBoardCodeFilter(normalizedScope, boardCode, null);
         if (SCOPE_APARTMENT.equals(normalizedScope)) {
             validateAptId(aptId);
             if (normalizedBoardCode == null) {
@@ -212,10 +212,11 @@ public class CommunityService {
 
     // 게시글 삭제
     @Transactional
-    public void deletePost(Long postId, String authorNickname) {
+    public void deletePost(Long postId, Authentication authentication) {
+        User user = requireAuthenticatedUser(authentication);
         CommunityPost post = communityPostRepository.findById(postId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
-        if (!post.getAuthorNickname().equals(authorNickname)) {
+        if (!isPostOwner(post, user)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot delete this post");
         }
         commentRepository.deleteByPostId(postId);
@@ -226,9 +227,13 @@ public class CommunityService {
 
     // 댓글 삭제
     @Transactional
-    public void deleteComment(Long commentId, String authorNickname) {
-        Comment comment = commentRepository.findByIdAndAuthorNickname(commentId, authorNickname)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot delete this comment"));
+    public void deleteComment(Long commentId, Authentication authentication) {
+        User user = requireAuthenticatedUser(authentication);
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
+        if (!isSameNickname(comment.getAuthorNickname(), user.getNickname())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot delete this comment");
+        }
         commentRepository.delete(comment);
         communityPostRepository.decrementCommentCount(comment.getPostId());
     }
@@ -369,17 +374,23 @@ public class CommunityService {
         return boardCode == null || boardCode.isBlank() || BOARD_APARTMENT_ALL.equals(boardCode);
     }
 
-    private String nullableBoardCode(String boardCode) {
-        return isBoardAll(boardCode) ? null : boardCode;
-    }
-
     private String normalizeScope(String scope, Long aptId) {
         if (SCOPE_GLOBAL.equals(scope)) return SCOPE_GLOBAL;
         if (SCOPE_APARTMENT.equals(scope)) return SCOPE_APARTMENT;
         return aptId == null ? SCOPE_GLOBAL : SCOPE_APARTMENT;
     }
 
-    private String normalizeBoardCode(String scope, String boardCode, String category) {
+    private String resolveBoardCodeFilter(String scope, String boardCode, String category) {
+        if (!isBlank(boardCode)) {
+            String normalizedBoardCode = boardCode.trim();
+            return isBoardAll(normalizedBoardCode) ? null : normalizedBoardCode;
+        }
+        String normalizedCategory = category == null ? "" : category.trim();
+        if (isCategoryAll(normalizedCategory)) return null;
+        return resolveBoardCodeForCreate(scope, null, normalizedCategory);
+    }
+
+    private String resolveBoardCodeForCreate(String scope, String boardCode, String category) {
         if (!isBlank(boardCode)) return boardCode.trim();
         String normalizedCategory = category == null ? "" : category.trim();
         if (SCOPE_GLOBAL.equals(scope)) {
@@ -454,6 +465,24 @@ public class CommunityService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "아파트 인증 정보가 없습니다.");
         }
         return user;
+    }
+
+    private User requireAuthenticatedUser(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login is required");
+        }
+        return user;
+    }
+
+    private boolean isPostOwner(CommunityPost post, User user) {
+        if (post.getAuthorUserId() != null && user.getId() != null) {
+            return post.getAuthorUserId().equals(user.getId());
+        }
+        return isSameNickname(post.getAuthorNickname(), user.getNickname());
+    }
+
+    private boolean isSameNickname(String left, String right) {
+        return left != null && left.equals(right);
     }
 
     private void validateCreateRequest(CreateCommunityPostRequest request, User user) {

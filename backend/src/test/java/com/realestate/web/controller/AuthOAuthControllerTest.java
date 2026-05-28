@@ -1,5 +1,23 @@
 package com.realestate.web.controller;
 
+/*
+ * 존재 이유:
+ * - 인증 컨트롤러가 비밀번호 재설정과 카카오 OAuth 요청을 올바른 URL/상태코드/JSON 형식으로 처리하는지 확인한다.
+ *
+ * 왜 필요한가:
+ * - 프론트는 이 API의 HTTP 계약에 의존하므로, URL이나 응답 필드가 바뀌면 로그인/비밀번호 재설정 화면이 바로 깨진다.
+ * - 컨트롤러 테스트는 서비스 내부 로직이 아니라 "요청을 받아 적절한 서비스로 넘기고 응답을 돌려주는 경계"를 고정한다.
+ *
+ * 어떻게 쓰는가:
+ * - `./gradlew.bat test --tests com.realestate.web.controller.AuthOAuthControllerTest`
+ * - 실제 외부 카카오 서버는 호출하지 않고 KakaoOAuthService를 mock으로 대체한다.
+ *
+ * 막는 장애:
+ * - 비밀번호 재설정 엔드포인트가 204 대신 다른 상태코드를 반환하는 문제
+ * - 카카오 로그인 응답에서 token/oauthProvider 같은 프론트 필수 필드가 빠지는 문제
+ * - 컨트롤러가 서비스 메서드를 호출하지 않아 요청이 처리되지 않는 문제
+ */
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.realestate.auth.AuthRateLimitService;
 import com.realestate.web.dto.AuthResponse;

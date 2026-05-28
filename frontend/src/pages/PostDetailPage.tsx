@@ -61,7 +61,7 @@ export const PostDetailPage = () => {
   })
 
   const deletePostMutation = useMutation({
-    mutationFn: () => deletePost(postId, nickname!),
+    mutationFn: () => deletePost(postId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['community', 'posts'] })
       showToast('게시글이 삭제되었어요', 'info')
@@ -71,7 +71,7 @@ export const PostDetailPage = () => {
   })
 
   const deleteCommentMutation = useMutation({
-    mutationFn: (commentId: number) => deleteComment(commentId, nickname!),
+    mutationFn: (commentId: number) => deleteComment(commentId),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['community', 'comments', postId] }),
     onError: () => showToast('댓글 삭제에 실패했습니다', 'error'),

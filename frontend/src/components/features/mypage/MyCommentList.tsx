@@ -19,7 +19,7 @@ export const MyCommentList = () => {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (commentId: number) => deleteComment(commentId, nickname!),
+    mutationFn: (commentId: number) => deleteComment(commentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['community', 'my-comments', nickname] })
       showToast('댓글이 삭제되었어요', 'info')

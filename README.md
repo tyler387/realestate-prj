@@ -20,10 +20,10 @@ Frontend is configured to read env from root via `frontend/vite.config.ts` (`env
 
 ```powershell
 cd backend
-copy .java17-home.example .java17-home
+Set-Content .java17-home "C:\Program Files\Java\jdk-17"
 ```
 
-Edit `backend/.java17-home` to your local JDK 17 path.
+Edit `backend/.java17-home` if your local JDK 17 path is different.
 
 4. Run backend locally with normal Gradle wrapper:
 

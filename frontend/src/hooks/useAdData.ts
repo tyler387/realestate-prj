@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { mockAds, USE_MOCK_AD, selectWeightedAd } from '../data/mockAdData'
 import type { Ad, AdSlotType } from '../types/ad'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
+
 export const useAd = (
   slot: AdSlotType,
   regionId: string,
@@ -20,7 +22,7 @@ export const useAd = (
       const params = new URLSearchParams({ slot, regionId })
       if (aptId) params.append('aptId', aptId)
 
-      return fetch(`/api/ads?${params.toString()}`)
+      return fetch(`${API_BASE_URL}/api/ads?${params.toString()}`)
         .then(r => r.json())
         .then(data => {
           if (!data.success) throw new Error(data.error?.message)

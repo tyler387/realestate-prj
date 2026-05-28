@@ -44,6 +44,8 @@ export const CommunityPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const prevAptIdRef = useRef<number | null | undefined>(undefined)
+  const lastUrlHydrationKeyRef = useRef<string | null>(null)
+  const isHydratingFromUrlRef = useRef(false)
   const pendingUrlAptIdRef = useRef<number | null>(null)
   const pendingUserAptIdRef = useRef<number | null>(null)
   const searchParamKey = searchParams.toString()
@@ -66,10 +68,14 @@ export const CommunityPage = () => {
     : null
 
   useEffect(() => {
+    if (lastUrlHydrationKeyRef.current === searchParamKey) return
+    lastUrlHydrationKeyRef.current = searchParamKey
+
     if (scope !== urlScope || boardCode !== urlBoardCode || sortType !== urlSortType) {
+      isHydratingFromUrlRef.current = true
       setCommunityState({ scope: urlScope, boardCode: urlBoardCode, sortType: urlSortType })
     }
-  }, [boardCode, scope, setCommunityState, sortType, urlBoardCode, urlScope, urlSortType])
+  }, [boardCode, scope, searchParamKey, setCommunityState, sortType, urlBoardCode, urlScope, urlSortType])
 
   useEffect(() => {
     if (
@@ -101,7 +107,12 @@ export const CommunityPage = () => {
   }, [urlAptId])
 
   useEffect(() => {
-    if (scope !== urlScope || boardCode !== urlBoardCode || sortType !== urlSortType) return
+    if (isHydratingFromUrlRef.current) {
+      if (scope === urlScope && boardCode === urlBoardCode && sortType === urlSortType) {
+        isHydratingFromUrlRef.current = false
+      }
+      return
+    }
     if (
       scope === 'APARTMENT'
       && urlAptId != null
@@ -113,7 +124,9 @@ export const CommunityPage = () => {
 
     const nextAptId = scope === 'APARTMENT' ? apartmentId ?? urlAptId : null
     const nextParams = buildCommunitySearchParams(scope, boardCode, sortType, nextAptId)
-    if (nextParams.toString() !== searchParamKey) {
+    const nextSearchParamKey = nextParams.toString()
+    if (nextSearchParamKey !== searchParamKey) {
+      lastUrlHydrationKeyRef.current = nextSearchParamKey
       setSearchParams(nextParams, { replace: true })
     }
   }, [
