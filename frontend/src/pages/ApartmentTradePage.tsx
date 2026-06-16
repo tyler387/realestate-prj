@@ -5,8 +5,15 @@ import { TradeTypeFilter, type TradeType } from '../components/features/trade/Tr
 import { PriceChart } from '../components/features/trade/PriceChart'
 import { TradeHistoryList } from '../components/features/trade/TradeHistoryList'
 import { useApartmentTrade } from '../hooks/useApartmentTrade'
+import { useTradeFilterStore } from '../stores/tradeFilterStore'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
+
+const DEAL_TYPE_TO_TRADE_TYPE: Record<'SALE' | 'JEONSE' | 'MONTHLY', Exclude<TradeType, 'all'>> = {
+  SALE:    '매매',
+  JEONSE:  '전세',
+  MONTHLY: '월세',
+}
 
 export const ApartmentTradePage = () => {
   const { id } = useParams<{ id: string }>()
@@ -16,6 +23,7 @@ export const ApartmentTradePage = () => {
   const [isFavorite, setIsFavorite] = useState(false)
   const status = useUserStore((s) => s.status)
   const openAuthSheet = useUiStore((s) => s.openAuthSheet)
+  const dealType = useTradeFilterStore((s) => s.dealType)
 
   const { summaryQuery, tradesQuery, tradeAreasQuery, priceHistoryQuery } = useApartmentTrade(aptId, selectedArea)
 
@@ -31,8 +39,13 @@ export const ApartmentTradePage = () => {
   }, [areaOptions, selectedArea])
 
   const latestPrice = apartment?.latestPrice ?? 0
+  const chartTradeType =
+    selectedType === 'all' && dealType
+      ? DEAL_TYPE_TO_TRADE_TYPE[dealType]
+      : selectedType
+
   const priceChangeRate = (() => {
-    const sale = priceHistory.filter((h) => h.tradeType === '매매')
+    const sale = priceHistory.filter((history) => history.tradeType === '매매')
     if (sale.length < 2) return 0
     const last = sale[sale.length - 1].avgPrice
     const prev = sale[sale.length - 2].avgPrice
@@ -77,7 +90,7 @@ export const ApartmentTradePage = () => {
       <PriceChart
         data={priceHistory}
         records={records}
-        tradeType={selectedType}
+        tradeType={chartTradeType}
         areaOptions={areaOptions}
         selectedArea={selectedArea}
         onAreaChange={setSelectedArea}

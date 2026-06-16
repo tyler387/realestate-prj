@@ -1,5 +1,7 @@
-﻿import { useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import type { TradeApartment as Apartment, TradeAreaOption, TradeRecord, PriceHistory } from '../types/trade'
+import { useTradeFilterStore } from '../stores/tradeFilterStore'
+import { useUiStore } from '../stores/uiStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
 
@@ -40,7 +42,56 @@ const toAreaParam = (area: number) => {
   return fixed.replace(/\.?0+$/, '')
 }
 
+const toTradeTypeLabel = (tradeType: string): '매매' | '전세' | '월세' => {
+  if (tradeType === 'LEASE' || tradeType === '전세') return '전세'
+  if (tradeType === 'MONTHLY' || tradeType === '월세') return '월세'
+  return '매매'
+}
+
 export const useApartmentTrade = (aptId: number, selectedArea: number | null) => {
+  const {
+    priceRange,
+    dealType,
+    areaRange,
+    preset,
+    floorBand,
+    yearBand,
+    complexKeyword,
+    excludeOutliers,
+  } = useTradeFilterStore()
+
+  const {
+    tradePeriod,
+    tradeCustomStartDate,
+    tradeCustomEndDate,
+  } = useUiStore()
+
+  const isCustomRangeValid =
+    tradePeriod !== 'custom' ||
+    (!!tradeCustomStartDate && !!tradeCustomEndDate && tradeCustomStartDate <= tradeCustomEndDate)
+
+  const buildTradeParams = (includeExclusiveArea: boolean) => {
+    const params = new URLSearchParams({ period: tradePeriod })
+    if (priceRange) params.set('priceRange', priceRange)
+    if (dealType) params.set('dealType', dealType)
+    if (areaRange) params.set('areaRange', areaRange)
+    if (preset) params.set('preset', preset)
+    if (floorBand) params.set('floorBand', floorBand)
+    if (yearBand) params.set('yearBand', yearBand)
+    if (complexKeyword) params.set('complexKeyword', complexKeyword)
+    if (excludeOutliers) params.set('excludeOutliers', 'true')
+    if (tradePeriod === 'custom' && tradeCustomStartDate && tradeCustomEndDate) {
+      params.set('startDate', tradeCustomStartDate)
+      params.set('endDate', tradeCustomEndDate)
+    }
+    if (includeExclusiveArea && selectedArea != null) {
+      params.set('exclusiveArea', toAreaParam(selectedArea))
+    }
+
+    const query = params.toString()
+    return query ? `?${query}` : ''
+  }
+
   const summaryQuery = useQuery<Apartment>({
     queryKey: ['apartment', 'detail', aptId],
     queryFn: () =>
@@ -57,9 +108,24 @@ export const useApartmentTrade = (aptId: number, selectedArea: number | null) =>
   })
 
   const tradesQuery = useQuery<TradeRecord[]>({
-    queryKey: ['apartment', 'trades', aptId],
+    queryKey: [
+      'apartment',
+      'trades',
+      aptId,
+      tradePeriod,
+      tradeCustomStartDate,
+      tradeCustomEndDate,
+      priceRange,
+      dealType,
+      areaRange,
+      preset,
+      floorBand,
+      yearBand,
+      complexKeyword,
+      excludeOutliers,
+    ],
     queryFn: () =>
-      fetch(`${API_BASE_URL}/api/v1/apartments/${aptId}/trades`)
+      fetch(`${API_BASE_URL}/api/v1/apartments/${aptId}/trades${buildTradeParams(false)}`)
         .then((r) => r.json())
         .then((data: ApiTrade[]) =>
           data.map((t) => ({
@@ -67,13 +133,13 @@ export const useApartmentTrade = (aptId: number, selectedArea: number | null) =>
             apartmentId: aptId,
             floor: t.floor != null ? String(t.floor) : '-',
             area: t.area ?? 0,
-            tradeType: (t.tradeType as '매매' | '전세' | '월세') ?? '매매',
+            tradeType: toTradeTypeLabel(t.tradeType),
             price: t.tradeAmount ?? 0,
             pricePerPyeong: t.pricePerPyeong,
             contractDate: t.contractDate ?? '-',
           }))
         ),
-    enabled: !!aptId,
+    enabled: !!aptId && isCustomRangeValid,
     staleTime: 1000 * 60 * 10,
   })
 
@@ -95,15 +161,25 @@ export const useApartmentTrade = (aptId: number, selectedArea: number | null) =>
   })
 
   const priceHistoryQuery = useQuery<PriceHistory[]>({
-    queryKey: ['apartment', 'priceHistory', aptId, selectedArea],
-    queryFn: () => {
-      const params = new URLSearchParams()
-      if (selectedArea != null) {
-        params.set('exclusiveArea', toAreaParam(selectedArea))
-      }
-      const query = params.toString()
-
-      return fetch(`${API_BASE_URL}/api/v1/apartments/${aptId}/price-history${query ? `?${query}` : ''}`)
+    queryKey: [
+      'apartment',
+      'priceHistory',
+      aptId,
+      selectedArea,
+      tradePeriod,
+      tradeCustomStartDate,
+      tradeCustomEndDate,
+      priceRange,
+      dealType,
+      areaRange,
+      preset,
+      floorBand,
+      yearBand,
+      complexKeyword,
+      excludeOutliers,
+    ],
+    queryFn: () =>
+      fetch(`${API_BASE_URL}/api/v1/apartments/${aptId}/price-history${buildTradeParams(true)}`)
         .then((r) => r.json())
         .then((data: ApiPriceHistory[]) =>
           data.map((h) => ({
@@ -111,16 +187,12 @@ export const useApartmentTrade = (aptId: number, selectedArea: number | null) =>
             avgPrice: h.avgPrice,
             avgPricePerPyeong: h.avgPricePerPyeong ?? null,
             transactionCount: h.transactionCount ?? 0,
-            tradeType: (h.tradeType as '매매' | '전세' | '월세') ?? '매매',
+            tradeType: toTradeTypeLabel(h.tradeType),
           }))
-        )
-    },
-    enabled: !!aptId && selectedArea != null,
+        ),
+    enabled: !!aptId && selectedArea != null && isCustomRangeValid,
     staleTime: 1000 * 60 * 10,
   })
 
   return { summaryQuery, tradesQuery, tradeAreasQuery, priceHistoryQuery }
 }
-
-
-

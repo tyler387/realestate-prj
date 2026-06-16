@@ -11,6 +11,7 @@ import com.realestate.web.dto.PriceHistoryDto;
 import com.realestate.web.dto.TradeAreaOptionDto;
 import com.realestate.web.dto.TradeRecordDto;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -85,10 +86,55 @@ public class ApartmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<TradeRecordDto> getTradeRecords(Long id) {
+    public List<TradeRecordDto> getTradeRecords(
+            Long id,
+            String period,
+            String priceRange,
+            String dealType,
+            String areaRange,
+            String preset,
+            String floorBand,
+            String yearBand,
+            String complexKeyword,
+            LocalDate startDate,
+            LocalDate endDate,
+            boolean excludeOutliers
+    ) {
         apartmentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Apartment not found"));
-        return realTradeRepository.findRecentByApartmentId(id)
+
+        TradeFilterCriteria criteria = resolveTradeFilterCriteria(
+                period,
+                priceRange,
+                dealType,
+                areaRange,
+                preset,
+                floorBand,
+                yearBand,
+                complexKeyword,
+                startDate,
+                endDate,
+                excludeOutliers
+        );
+
+        return realTradeRepository.findRecentByApartmentIdWithFilters(
+                        id,
+                        criteria.startDate(),
+                        criteria.endDate(),
+                        criteria.tradeType(),
+                        criteria.minPrice(),
+                        criteria.maxPrice(),
+                        criteria.minArea(),
+                        criteria.maxArea(),
+                        criteria.minFloor(),
+                        criteria.maxFloor(),
+                        criteria.minAge(),
+                        criteria.maxAge(),
+                        criteria.onlyNew(),
+                        criteria.onlyLarge(),
+                        criteria.complexKeyword(),
+                        criteria.excludeOutliers()
+                )
                 .stream()
                 .map(p -> new TradeRecordDto(
                         p.getId(),
@@ -116,12 +162,57 @@ public class ApartmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<PriceHistoryDto> getPriceHistory(Long id, BigDecimal exclusiveArea, String areaRange) {
+    public List<PriceHistoryDto> getPriceHistory(
+            Long id,
+            BigDecimal exclusiveArea,
+            String period,
+            String priceRange,
+            String dealType,
+            String areaRange,
+            String preset,
+            String floorBand,
+            String yearBand,
+            String complexKeyword,
+            LocalDate startDate,
+            LocalDate endDate,
+            boolean excludeOutliers
+    ) {
         apartmentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Apartment not found"));
 
-        AreaBounds areaBounds = resolveAreaBounds(areaRange);
-        return realTradeRepository.findPriceHistoryByApartmentId(id, exclusiveArea, areaBounds.minArea(), areaBounds.maxArea())
+        TradeFilterCriteria criteria = resolveTradeFilterCriteria(
+                period,
+                priceRange,
+                dealType,
+                areaRange,
+                preset,
+                floorBand,
+                yearBand,
+                complexKeyword,
+                startDate,
+                endDate,
+                excludeOutliers
+        );
+
+        return realTradeRepository.findPriceHistoryByApartmentIdWithFilters(
+                        id,
+                        criteria.startDate(),
+                        criteria.endDate(),
+                        criteria.tradeType(),
+                        exclusiveArea,
+                        criteria.minPrice(),
+                        criteria.maxPrice(),
+                        criteria.minArea(),
+                        criteria.maxArea(),
+                        criteria.minFloor(),
+                        criteria.maxFloor(),
+                        criteria.minAge(),
+                        criteria.maxAge(),
+                        criteria.onlyNew(),
+                        criteria.onlyLarge(),
+                        criteria.complexKeyword(),
+                        criteria.excludeOutliers()
+                )
                 .stream()
                 .map(p -> new PriceHistoryDto(
                         p.getMonth(),
@@ -131,19 +222,6 @@ public class ApartmentService {
                         toKoreanTradeType(p.getTradeType())
                 ))
                 .toList();
-    }
-
-    private AreaBounds resolveAreaBounds(String areaRange) {
-        if ("20".equals(areaRange)) {
-            return new AreaBounds(59.0, 82.0);
-        }
-        if ("30".equals(areaRange)) {
-            return new AreaBounds(82.0, 115.0);
-        }
-        if ("40".equals(areaRange)) {
-            return new AreaBounds(115.0, null);
-        }
-        return new AreaBounds(null, null);
     }
 
     private String toKoreanTradeType(String tradeType) {
@@ -168,5 +246,142 @@ public class ApartmentService {
         );
     }
 
+    private TradeFilterCriteria resolveTradeFilterCriteria(
+            String period,
+            String priceRange,
+            String dealType,
+            String areaRange,
+            String preset,
+            String floorBand,
+            String yearBand,
+            String complexKeyword,
+            LocalDate startDate,
+            LocalDate endDate,
+            boolean excludeOutliers
+    ) {
+        DateRange dateRange = resolveDateRange(period, startDate, endDate);
+        PriceBounds priceBounds = resolvePriceBounds(priceRange);
+        AreaBounds areaBounds = resolveAreaBounds(areaRange);
+        FloorBounds floorBounds = resolveFloorBounds(floorBand);
+        AgeBounds ageBounds = resolveAgeBounds(yearBand);
+
+        return new TradeFilterCriteria(
+                dateRange.startDate(),
+                dateRange.endDate(),
+                resolveTradeType(dealType),
+                priceBounds.minPrice(),
+                priceBounds.maxPrice(),
+                areaBounds.minArea(),
+                areaBounds.maxArea(),
+                floorBounds.minFloor(),
+                floorBounds.maxFloor(),
+                ageBounds.minAge(),
+                ageBounds.maxAge(),
+                "NEW".equals(preset),
+                "LARGE".equals(preset),
+                complexKeyword == null || complexKeyword.isBlank() ? null : complexKeyword.trim(),
+                excludeOutliers
+        );
+    }
+
+    private DateRange resolveDateRange(String period, LocalDate startDate, LocalDate endDate) {
+        if (startDate != null && endDate != null && !endDate.isBefore(startDate)) {
+            return new DateRange(startDate, endDate);
+        }
+
+        int months = switch (period == null ? "1m" : period) {
+            case "3m" -> 3;
+            case "6m" -> 6;
+            case "12m" -> 12;
+            case "custom", "1m" -> 1;
+            default -> 1;
+        };
+        LocalDate now = LocalDate.now();
+        return new DateRange(now.minusMonths(months), now);
+    }
+
+    private String resolveTradeType(String dealType) {
+        if (dealType == null || dealType.isBlank()) return null;
+        return switch (dealType) {
+            case "SALE" -> "SALE";
+            case "JEONSE", "LEASE" -> "LEASE";
+            case "MONTHLY" -> "MONTHLY";
+            default -> null;
+        };
+    }
+
+    private PriceBounds resolvePriceBounds(String priceRange) {
+        if ("UNDER_10".equals(priceRange)) {
+            return new PriceBounds(0L, 100_000L);
+        }
+        if ("10_20".equals(priceRange)) {
+            return new PriceBounds(100_000L, 200_000L);
+        }
+        if ("OVER_20".equals(priceRange)) {
+            return new PriceBounds(200_000L, null);
+        }
+        return new PriceBounds(null, null);
+    }
+
+    private AreaBounds resolveAreaBounds(String areaRange) {
+        if ("20".equals(areaRange)) {
+            return new AreaBounds(66.0, 99.0);
+        }
+        if ("30".equals(areaRange)) {
+            return new AreaBounds(99.0, 132.0);
+        }
+        if ("40".equals(areaRange)) {
+            return new AreaBounds(132.0, 165.0);
+        }
+        return new AreaBounds(null, null);
+    }
+
+    private FloorBounds resolveFloorBounds(String floorBand) {
+        if ("LOW".equals(floorBand)) {
+            return new FloorBounds(1, 5);
+        }
+        if ("MID".equals(floorBand)) {
+            return new FloorBounds(6, 15);
+        }
+        if ("HIGH".equals(floorBand)) {
+            return new FloorBounds(16, null);
+        }
+        return new FloorBounds(null, null);
+    }
+
+    private AgeBounds resolveAgeBounds(String yearBand) {
+        if ("NEW_0_10".equals(yearBand)) {
+            return new AgeBounds(0, 10);
+        }
+        if ("MID_11_20".equals(yearBand)) {
+            return new AgeBounds(11, 20);
+        }
+        if ("OLD_21_PLUS".equals(yearBand)) {
+            return new AgeBounds(21, null);
+        }
+        return new AgeBounds(null, null);
+    }
+
+    private record DateRange(LocalDate startDate, LocalDate endDate) {}
+    private record PriceBounds(Long minPrice, Long maxPrice) {}
     private record AreaBounds(Double minArea, Double maxArea) {}
+    private record FloorBounds(Integer minFloor, Integer maxFloor) {}
+    private record AgeBounds(Integer minAge, Integer maxAge) {}
+    private record TradeFilterCriteria(
+            LocalDate startDate,
+            LocalDate endDate,
+            String tradeType,
+            Long minPrice,
+            Long maxPrice,
+            Double minArea,
+            Double maxArea,
+            Integer minFloor,
+            Integer maxFloor,
+            Integer minAge,
+            Integer maxAge,
+            boolean onlyNew,
+            boolean onlyLarge,
+            String complexKeyword,
+            boolean excludeOutliers
+    ) {}
 }

@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { TradeSearchBar } from '../components/features/trade/TradeSearchBar'
 import { PeriodFilter } from '../components/features/trade/PeriodFilter'
 import { TradeRankingList } from '../components/features/trade/TradeRankingList'
 import { AptFilterBanner } from '../components/features/trade-sidebar/AptFilterBanner'
+import { MobileTradeFilterDrawer } from '../components/features/trade-sidebar/MobileTradeFilterDrawer'
 import { useUiStore } from '../stores/uiStore'
 import { useTradeFilterStore } from '../stores/tradeFilterStore'
 import type { TopApartment } from '../types/trade'
@@ -13,6 +14,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081
 
 export const TradePage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
   const {
     tradePeriod,
     setTradePeriod,
@@ -170,9 +172,39 @@ export const TradePage = () => {
     ? (rankings.find((r) => String(r.aptId) === aptId)?.aptName ?? aptId)
     : null
 
+  const activeFilterCount = [
+    aptId,
+    priceRange,
+    dealType,
+    areaRange,
+    preset,
+    floorBand,
+    yearBand,
+    complexKeyword,
+    excludeOutliers ? 'excludeOutliers' : null,
+  ].filter(Boolean).length
+
   return (
     <div className="flex flex-col">
       <TradeSearchBar />
+
+      <div className="px-4 pt-2 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setIsMobileFilterOpen(true)}
+          className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition-colors hover:border-blue-200"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+            <svg className="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M6 12h12M10 20h4" />
+            </svg>
+            필터
+          </span>
+          <span className="text-xs font-medium text-gray-500">
+            {activeFilterCount > 0 ? `${activeFilterCount}개 적용` : '전체 조건'}
+          </span>
+        </button>
+      </div>
 
       {aptId && aptName && (
         <AptFilterBanner aptName={aptName} onClear={() => setAptId(null)} />
@@ -189,6 +221,10 @@ export const TradePage = () => {
         실거래 많은 아파트 TOP 20
       </p>
       <TradeRankingList rankings={filtered} isLoading={isLoading} />
+      <MobileTradeFilterDrawer
+        isOpen={isMobileFilterOpen}
+        onClose={() => setIsMobileFilterOpen(false)}
+      />
     </div>
   )
 }

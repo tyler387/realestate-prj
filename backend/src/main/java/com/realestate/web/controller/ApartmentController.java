@@ -49,8 +49,34 @@ public class ApartmentController {
     }
 
     @GetMapping("/{id}/trades")
-    public List<TradeRecordDto> getTrades(@PathVariable Long id) {
-        return apartmentService.getTradeRecords(id);
+    public List<TradeRecordDto> getTrades(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1m") String period,
+            @RequestParam(required = false) String priceRange,
+            @RequestParam(required = false) String dealType,
+            @RequestParam(required = false) String areaRange,
+            @RequestParam(required = false) String preset,
+            @RequestParam(required = false) String floorBand,
+            @RequestParam(required = false) String yearBand,
+            @RequestParam(required = false) String complexKeyword,
+            @RequestParam(required = false) java.time.LocalDate startDate,
+            @RequestParam(required = false) java.time.LocalDate endDate,
+            @RequestParam(defaultValue = "false") boolean excludeOutliers
+    ) {
+        return apartmentService.getTradeRecords(
+                id,
+                period,
+                priceRange,
+                dealType,
+                areaRange,
+                preset,
+                floorBand,
+                yearBand,
+                complexKeyword,
+                startDate,
+                endDate,
+                excludeOutliers
+        );
     }
 
     @GetMapping("/{id}/trade-areas")
@@ -62,8 +88,32 @@ public class ApartmentController {
     public List<PriceHistoryDto> getPriceHistory(
             @PathVariable Long id,
             @RequestParam(required = false) BigDecimal exclusiveArea,
-            @RequestParam(required = false) String areaRange
+            @RequestParam(defaultValue = "1m") String period,
+            @RequestParam(required = false) String priceRange,
+            @RequestParam(required = false) String dealType,
+            @RequestParam(required = false) String areaRange,
+            @RequestParam(required = false) String preset,
+            @RequestParam(required = false) String floorBand,
+            @RequestParam(required = false) String yearBand,
+            @RequestParam(required = false) String complexKeyword,
+            @RequestParam(required = false) java.time.LocalDate startDate,
+            @RequestParam(required = false) java.time.LocalDate endDate,
+            @RequestParam(defaultValue = "false") boolean excludeOutliers
     ) {
-        return apartmentService.getPriceHistory(id, exclusiveArea, areaRange);
+        return apartmentService.getPriceHistory(
+                id,
+                exclusiveArea,
+                period,
+                priceRange,
+                dealType,
+                areaRange,
+                preset,
+                floorBand,
+                yearBand,
+                complexKeyword,
+                startDate,
+                endDate,
+                excludeOutliers
+        );
     }
 }

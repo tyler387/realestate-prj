@@ -1,14 +1,7 @@
 import { type TradeRecord } from '../../../types/trade'
 import { type TradeType } from './TradeTypeFilter'
-import { useTradeFilterStore } from '../../../stores/tradeFilterStore'
 import { TradeHistoryItem } from './TradeHistoryItem'
 import { EmptyState } from '../../common/EmptyState'
-
-const DEAL_TYPE_MAP: Record<'SALE' | 'JEONSE' | 'MONTHLY', '매매' | '전세' | '월세'> = {
-  SALE:    '매매',
-  JEONSE:  '전세',
-  MONTHLY: '월세',
-}
 
 type Props = {
   records: TradeRecord[]
@@ -20,38 +13,18 @@ const isSameArea = (left: number, right: number | null | undefined) =>
   right == null || Math.abs(left - right) < 0.0001
 
 export const TradeHistoryList = ({ records, selectedType, selectedArea }: Props) => {
-  const { priceRange, dealType, areaRange } = useTradeFilterStore()
-
   const filtered = records
-    .filter((r) => selectedType === 'all' || r.tradeType === selectedType)
-    .filter((r) => {
-      if (!priceRange) return true
-      if (priceRange === 'UNDER_10') return r.price < 100000
-      if (priceRange === '10_20')    return r.price >= 100000 && r.price <= 200000
-      if (priceRange === 'OVER_20')  return r.price > 200000
-      return true
-    })
-    .filter((r) => {
-      if (!dealType) return true
-      return r.tradeType === DEAL_TYPE_MAP[dealType]
-    })
-    .filter((r) => {
-      if (!areaRange) return true
-      if (areaRange === '20') return r.area >= 59  && r.area < 82
-      if (areaRange === '30') return r.area >= 82  && r.area < 115
-      if (areaRange === '40') return r.area >= 115
-      return true
-    })
-    .filter((r) => isSameArea(r.area, selectedArea))
+    .filter((record) => selectedType === 'all' || record.tradeType === selectedType)
+    .filter((record) => isSameArea(record.area, selectedArea))
 
   if (filtered.length === 0) {
-    return <EmptyState icon="📭" title="해당 유형의 거래 내역이 없어요" />
+    return <EmptyState icon="거래" title="해당 조건의 거래 내역이 없습니다" />
   }
 
   return (
     <div>
-      {filtered.map((r) => (
-        <TradeHistoryItem key={r.id} record={r} />
+      {filtered.map((record) => (
+        <TradeHistoryItem key={record.id} record={record} />
       ))}
     </div>
   )
