@@ -55,15 +55,15 @@ public class ApartmentService {
         }
         return apartmentRepository.searchByKeyword(trimmed)
                 .stream()
-                .map(p -> new ApartmentSearchDto(
-                        p.getId(),
-                        p.getComplexName(),
-                        p.getRoadAddress(),
-                        p.getSigungu(),
-                        p.getEupMyeonDong(),
-                        p.getLatitude(),
-                        p.getLongitude()
-                ))
+                .map(this::toApartmentSearchDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApartmentSearchDto> getPopularApartments() {
+        return apartmentRepository.findPopularApartments()
+                .stream()
+                .map(this::toApartmentSearchDto)
                 .toList();
     }
 
@@ -154,6 +154,18 @@ public class ApartmentService {
             case "MONTHLY" -> "월세";
             default -> tradeType;
         };
+    }
+
+    private ApartmentSearchDto toApartmentSearchDto(ApartmentSearchProjection p) {
+        return new ApartmentSearchDto(
+                p.getId(),
+                p.getComplexName(),
+                p.getRoadAddress(),
+                p.getSigungu(),
+                p.getEupMyeonDong(),
+                p.getLatitude(),
+                p.getLongitude()
+        );
     }
 
     private record AreaBounds(Double minArea, Double maxArea) {}

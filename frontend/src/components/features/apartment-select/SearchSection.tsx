@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { Apartment } from '../../../types'
 import { useDebounce } from '../../../hooks/useDebounce'
 import { EmptyState } from '../../common/EmptyState'
@@ -6,12 +7,9 @@ import { Skeleton } from '../../common/Skeleton'
 import {
   getRecentApartments,
   clearRecentApartments,
-  saveRecentApartment,
 } from '../../../utils/recentApartments'
+import { getPopularApartments, searchApartments } from '../../../services/apartmentService'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
-
-// ── SearchInput ────────────────────────────────────────────────────
 const SearchInput = ({
   value,
   onChange,
@@ -22,25 +20,28 @@ const SearchInput = ({
   onClear: () => void
 }) => (
   <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 flex-shrink-0">
-    <span className="text-gray-400 text-sm flex-shrink-0">🔍</span>
+    <span className="text-gray-400 text-sm flex-shrink-0">검색</span>
     <input
       type="text"
       autoFocus
       autoComplete="off"
       placeholder="아파트명 또는 지역으로 검색"
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       className="flex-1 text-sm text-gray-900 outline-none placeholder:text-gray-400"
     />
     {value && (
-      <button onClick={onClear} className="text-gray-400 hover:text-gray-600 text-sm flex-shrink-0">
-        ✕
+      <button
+        type="button"
+        onClick={onClear}
+        className="text-gray-400 hover:text-gray-600 text-sm flex-shrink-0"
+      >
+        지우기
       </button>
     )}
   </div>
 )
 
-// ── SearchResultItem ───────────────────────────────────────────────
 const SearchResultItem = ({
   apt,
   onSelect,
@@ -48,21 +49,19 @@ const SearchResultItem = ({
   apt: Apartment
   onSelect: (apt: Apartment) => void
 }) => (
-  <div
+  <button
+    type="button"
     onClick={() => onSelect(apt)}
-    className="flex items-center justify-between
-               px-4 py-3 border-b border-gray-100 last:border-b-0
-               cursor-pointer hover:bg-gray-50 transition-colors"
+    className="w-full flex items-center justify-between px-4 py-3 border-b border-gray-100 last:border-b-0 text-left cursor-pointer hover:bg-gray-50 transition-colors"
   >
-    <div className="min-w-0">
-      <p className="text-sm font-semibold text-gray-900 truncate">{apt.aptName}</p>
-      <p className="text-xs text-gray-400 mt-0.5 truncate">{apt.address}</p>
-    </div>
-    <span className="text-gray-300 text-sm flex-shrink-0 ml-2">›</span>
-  </div>
+    <span className="min-w-0">
+      <span className="block text-sm font-semibold text-gray-900 truncate">{apt.aptName}</span>
+      <span className="block text-xs text-gray-400 mt-0.5 truncate">{apt.address}</span>
+    </span>
+    <span className="text-gray-300 text-sm flex-shrink-0 ml-2">선택</span>
+  </button>
 )
 
-// ── SearchResultSkeleton ───────────────────────────────────────────
 const SearchResultSkeleton = () => (
   <div className="px-4 py-2 space-y-3">
     {[...Array(4)].map((_, i) => (
@@ -74,7 +73,6 @@ const SearchResultSkeleton = () => (
   </div>
 )
 
-// ── RecentApartmentList ────────────────────────────────────────────
 const RecentApartmentList = ({
   onSelect,
 }: {
@@ -93,23 +91,61 @@ const RecentApartmentList = ({
       <div className="flex items-center justify-between px-4 mb-1">
         <span className="text-xs font-medium text-gray-500">최근 선택</span>
         <button
+          type="button"
           onClick={() => {
             clearRecentApartments()
             setRecents([])
           }}
           className="text-xs text-gray-400 hover:text-gray-600"
         >
-          전체삭제
+          전체 삭제
         </button>
       </div>
-      {recents.map(apt => (
+      {recents.map((apt) => (
         <SearchResultItem key={apt.aptId} apt={apt} onSelect={onSelect} />
       ))}
     </div>
   )
 }
 
-// ── SearchSection ──────────────────────────────────────────────────
+const PopularApartmentList = ({
+  onSelect,
+}: {
+  onSelect: (apt: Apartment) => void
+}) => {
+  const { data = [], isError } = useQuery({
+    queryKey: ['apartments', 'popular'],
+    queryFn:  getPopularApartments,
+    staleTime: 10 * 60 * 1000,
+  })
+
+  if (isError || data.length === 0) return null
+
+  return (
+    <div className="py-3 border-t border-gray-100">
+      <p className="text-xs font-medium text-gray-500 px-4 mb-1">인기 아파트</p>
+      {data.map((apt, index) => (
+        <button
+          key={apt.aptId}
+          type="button"
+          onClick={() => onSelect(apt)}
+          className="w-full flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 text-left cursor-pointer hover:bg-gray-50 transition-colors"
+        >
+          <span className={`w-5 text-xs font-bold flex-shrink-0 text-center ${
+            index < 3 ? 'text-blue-500' : 'text-gray-400'
+          }`}>
+            {index + 1}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-gray-900 truncate">{apt.aptName}</span>
+            <span className="block text-xs text-gray-400 mt-0.5 truncate">{apt.address}</span>
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export const SearchSection = ({
   onSelect,
 }: {
@@ -128,30 +164,22 @@ export const SearchSection = ({
       setIsError(false)
       return
     }
+
     setIsLoading(true)
     setIsError(false)
-    fetch(`${API_BASE_URL}/api/v1/apartments/search?keyword=${encodeURIComponent(debouncedKeyword)}`)
-      .then((r) => r.json())
-      .then((data: Array<{ id: number; complexName: string; roadAddress: string; latitude: number; longitude: number }>) => {
-        setResults(data.map((d) => ({
-          aptId:   String(d.id),
-          aptName: d.complexName,
-          address: d.roadAddress ?? '',
-          lat:     d.latitude ?? 0,
-          lng:     d.longitude ?? 0,
-        })))
-      })
+    searchApartments(debouncedKeyword)
+      .then(setResults)
       .catch(() => setIsError(true))
       .finally(() => setIsLoading(false))
   }, [debouncedKeyword])
 
-  const handleSelect = (apt: Apartment) => {
-    saveRecentApartment(apt)
-    onSelect(apt)
-  }
-
   const renderContent = () => {
-    if (keyword.length === 0) return <RecentApartmentList onSelect={handleSelect} />
+    if (keyword.length === 0) return (
+      <>
+        <RecentApartmentList onSelect={onSelect} />
+        <PopularApartmentList onSelect={onSelect} />
+      </>
+    )
 
     if (keyword.length < 2) return (
       <p className="text-xs text-gray-400 text-center py-8">
@@ -168,13 +196,13 @@ export const SearchSection = ({
     )
 
     if (results.length === 0) return (
-      <EmptyState icon="🔍" title="검색 결과가 없습니다" />
+      <EmptyState icon="검색" title="검색 결과가 없습니다" />
     )
 
     return (
       <div>
-        {results.map(apt => (
-          <SearchResultItem key={apt.aptId} apt={apt} onSelect={handleSelect} />
+        {results.map((apt) => (
+          <SearchResultItem key={apt.aptId} apt={apt} onSelect={onSelect} />
         ))}
       </div>
     )

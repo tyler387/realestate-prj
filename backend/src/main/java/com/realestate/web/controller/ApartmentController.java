@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/apartments")
+@RequestMapping({"/api/v1/apartments", "/api/apartments"})
 @RequiredArgsConstructor
 public class ApartmentController {
 
@@ -36,6 +36,11 @@ public class ApartmentController {
     @GetMapping("/search")
     public List<ApartmentSearchDto> search(@RequestParam String keyword) {
         return apartmentService.searchApartments(keyword);
+    }
+
+    @GetMapping("/popular")
+    public List<ApartmentSearchDto> popular() {
+        return apartmentService.getPopularApartments();
     }
 
     @GetMapping("/{id}/summary")

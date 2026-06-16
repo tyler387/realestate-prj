@@ -94,6 +94,37 @@ public interface ApartmentRepository extends JpaRepository<Apartment, Long> {
             SELECT
                 a.id AS id,
                 a.complex_name AS complexName,
+                a.road_address AS roadAddress,
+                a.sigungu AS sigungu,
+                a.eup_myeon_dong AS eupMyeonDong,
+                ST_Y(a.location) AS latitude,
+                ST_X(a.location) AS longitude
+            FROM apartment a
+            LEFT JOIN real_trade r
+              ON r.apartment_id = a.id
+             AND r.is_cancelled = false
+             AND r.trade_type = 'SALE'
+             AND r.trade_date >= CURRENT_DATE - INTERVAL '90 days'
+            GROUP BY
+                a.id,
+                a.complex_name,
+                a.road_address,
+                a.sigungu,
+                a.eup_myeon_dong,
+                a.location,
+                a.total_household_count
+            ORDER BY
+                COUNT(r.id) DESC,
+                a.total_household_count DESC NULLS LAST,
+                a.complex_name
+            LIMIT 5
+            """, nativeQuery = true)
+    List<ApartmentSearchProjection> findPopularApartments();
+
+    @Query(value = """
+            SELECT
+                a.id AS id,
+                a.complex_name AS complexName,
                 CONCAT(a.sido, ' ', a.sigungu, ' ', a.eup_myeon_dong) AS location,
                 a.total_household_count AS totalHouseholdCount,
                 a.completion_year AS completionYear,
