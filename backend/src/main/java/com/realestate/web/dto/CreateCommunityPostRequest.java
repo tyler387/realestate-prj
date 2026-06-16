@@ -6,11 +6,6 @@ public record CreateCommunityPostRequest(
         Long aptId,
         String category,
         String title,
-        String content,
-        String authorNickname,
-        String complexName,
-        Long authorUserId,
-        Long authorVerifiedAptId,
-        String authorVerifiedAptName
+        String content
 ) {
 }

@@ -22,8 +22,6 @@ export const PostDetailPage = () => {
   const navigate = useNavigate()
   const status = useUserStore((s) => s.status)
   const nickname = useUserStore((s) => s.nickname)
-  const verifiedApartmentId   = useUserStore((s) => s.verifiedApartmentId)
-  const verifiedApartmentName = useUserStore((s) => s.verifiedApartmentName)
   const openAuthSheet = useUiStore((s) => s.openAuthSheet)
   const showToast = useUiStore((s) => s.showToast)
   const queryClient = useQueryClient()
@@ -44,7 +42,7 @@ export const PostDetailPage = () => {
   })
 
   const likeMutation = useMutation({
-    mutationFn: () => toggleLike(postId, nickname!),
+    mutationFn: () => toggleLike(postId),
     onSuccess: (data) => {
       queryClient.setQueryData<Post>(['community', 'post', postId, nickname], (prev) =>
         prev ? { ...prev, liked: data.liked, likeCount: data.likeCount } : prev
@@ -54,7 +52,7 @@ export const PostDetailPage = () => {
   })
 
   const commentMutation = useMutation({
-    mutationFn: (content: string) => createComment(postId, nickname!, content, verifiedApartmentId, verifiedApartmentName),
+    mutationFn: (content: string) => createComment(postId, content),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['community', 'comments', postId] }),
     onError: () => showToast('댓글 작성에 실패했습니다', 'error'),

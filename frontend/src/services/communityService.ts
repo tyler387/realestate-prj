@@ -9,11 +9,6 @@ type CreatePostParams = {
   category?: string
   title: string
   content: string
-  authorNickname: string
-  complexName: string
-  authorUserId?: number | null
-  authorVerifiedAptId?: number | null
-  authorVerifiedAptName?: string | null
 }
 
 export type LikeToggleResponse = {
@@ -112,15 +107,12 @@ export const fetchComments = async (postId: number): Promise<Comment[]> =>
 
 export const createComment = async (
   postId: number,
-  authorNickname: string,
   content: string,
-  authorAptId?: number | null,
-  authorAptName?: string | null,
 ): Promise<Comment> =>
   requestJson<Comment>(`/api/community/posts/${postId}/comments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ authorNickname, authorAptId: authorAptId ?? null, authorAptName: authorAptName ?? null, content }),
+    body: JSON.stringify({ content }),
   })
 
 export const deletePost = async (postId: number): Promise<void> =>
@@ -129,14 +121,9 @@ export const deletePost = async (postId: number): Promise<void> =>
 export const deleteComment = async (commentId: number): Promise<void> =>
   requestVoid(`/api/community/comments/${commentId}`, { method: 'DELETE' })
 
-export const toggleLike = async (
-  postId: number,
-  authorNickname: string,
-): Promise<LikeToggleResponse> =>
+export const toggleLike = async (postId: number): Promise<LikeToggleResponse> =>
   requestJson<LikeToggleResponse>(`/api/community/posts/${postId}/like`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ authorNickname }),
   })
 
 export const fetchMyPosts = async (nickname: string): Promise<Post[]> =>

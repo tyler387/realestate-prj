@@ -12,10 +12,7 @@ export const WritePage = () => {
   const { scope, boardCode, setBoardCode } = usePostStore()
   const apartmentId = useUserStore((s) => s.apartmentId)
   const apartmentName = useUserStore((s) => s.apartmentName)
-  const verifiedApartmentId = useUserStore((s) => s.verifiedApartmentId)
   const verifiedApartmentName = useUserStore((s) => s.verifiedApartmentName)
-  const nickname = useUserStore((s) => s.nickname)
-  const userId = useUserStore((s) => s.userId)
   const status = useUserStore((s) => s.status)
 
   const boards = scope === 'GLOBAL'
@@ -49,13 +46,6 @@ export const WritePage = () => {
         category: boardLabelOf(activeBoardCode),
         title: title.trim(),
         content: content.trim(),
-        authorNickname: nickname ?? '익명',
-        complexName: scope === 'GLOBAL'
-          ? verifiedApartmentName ?? apartmentName ?? '전체 커뮤니티'
-          : verifiedApartmentName ?? apartmentName ?? '아파트',
-        authorUserId: userId,
-        authorVerifiedAptId: verifiedApartmentId,
-        authorVerifiedAptName: verifiedApartmentName,
       })
       await queryClient.invalidateQueries({ queryKey: ['community', 'posts'] })
       navigate('/')

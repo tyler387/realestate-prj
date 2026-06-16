@@ -2,22 +2,13 @@ package com.realestate.service;
 
 /*
  * 존재 이유:
- * - 공통게시판 P0 마감 기준을 자동으로 검증하는 회귀 테스트다.
- *
- * 왜 필요한가:
- * - GLOBAL 게시판은 aptId가 null일 수 있어, 기존 아파트별 게시판 전제(aptId 필수)와 충돌하기 쉽다.
- * - 글쓰기/댓글/좋아요는 프론트가 보낸 작성자 정보가 아니라 서버 인증 사용자 정보로 처리되어야 한다.
- * - 공통게시판을 고치다가 기존 APARTMENT 게시판 조회가 깨지는지도 함께 잡아야 한다.
- *
- * 어떻게 쓰는가:
- * - `./gradlew.bat test --tests com.realestate.service.CommunityServiceP0Test`
- * - 커뮤니티 도메인/API를 수정한 뒤에는 전체 `./gradlew.bat test`로 함께 돌린다.
+ * - 공통게시판 P0/P1 핵심 회귀를 서비스 레벨에서 빠르게 검증하는 안전장치다.
  *
  * 막는 장애:
- * - `GLOBAL/BLAH` 목록 조회가 aptId 없음 때문에 400/500으로 실패하는 문제
- * - 공통 게시글의 조회/좋아요/키워드 로그가 null aptId를 처리하지 못하는 문제
- * - 클라이언트가 조작한 nickname/apartmentName이 작성자 스냅샷으로 저장되는 문제
- * - 우리 아파트 게시판의 `APARTMENT + aptId` 조회 회귀
+ * - GLOBAL 게시판의 null aptId가 기존 아파트별 게시판 전제와 충돌해 조회/집계가 깨지는 문제
+ * - 프론트가 보낸 작성자/아파트 정보로 게시글, 댓글, 좋아요 작성자가 조작되는 문제
+ * - post_stats, keyword_stats 집계 row가 없을 때 인기글/키워드 fallback이 동작하지 않는 문제
+ * - APARTMENT 게시판의 aptId 기반 조회가 공통게시판 확장 중 깨지는 문제
  */
 
 import com.realestate.domain.entity.Comment;
@@ -112,13 +103,8 @@ class CommunityServiceP0Test {
                         "BLAH",
                         null,
                         null,
-                        "대출금리 체감",
-                        "요즘 대출금리 체감 어떤가요",
-                        "clientNick",
-                        "clientApt",
-                        999L,
-                        9999L,
-                        "clientVerifiedApt"
+                        "loan rate title",
+                        "loan rate body"
                 ),
                 authentication
         );
@@ -142,7 +128,7 @@ class CommunityServiceP0Test {
         verify(keywordLogRepository).saveAll(keywordCaptor.capture());
         assertThat(keywordCaptor.getValue()).allSatisfy(log -> assertThat(log.getAptId()).isNull());
         verify(postStatsRepository).upsertFromPost(100L);
-        verify(keywordStatsRepository).incrementKeyword(eq("대출금리"), isNull(), eq("GLOBAL"), eq("BLAH"), eq(-1L));
+        verify(keywordStatsRepository).incrementKeyword(eq("loan"), isNull(), eq("GLOBAL"), eq("BLAH"), eq(-1L));
     }
 
     @Test
@@ -157,19 +143,7 @@ class CommunityServiceP0Test {
         });
 
         CommunityPostDto result = communityService.createPost(
-                new CreateCommunityPostRequest(
-                        "GLOBAL",
-                        "BLAH",
-                        null,
-                        null,
-                        "hello title",
-                        "hello body",
-                        "clientNick",
-                        "clientApt",
-                        999L,
-                        9999L,
-                        "clientVerifiedApt"
-                ),
+                new CreateCommunityPostRequest("GLOBAL", "BLAH", null, null, "hello title", "hello body"),
                 authentication
         );
 
@@ -219,7 +193,7 @@ class CommunityServiceP0Test {
 
         CommentDto result = communityService.createComment(
                 20L,
-                new CreateCommentRequest("clientNick", 9999L, "clientApt", "댓글입니다"),
+                new CreateCommentRequest("댓글입니다"),
                 authentication
         );
 
@@ -228,6 +202,7 @@ class CommunityServiceP0Test {
         assertThat(result.authorAptId()).isEqualTo(3100L);
         assertThat(result.authorAptName()).isEqualTo("래미안 원베일리");
         verify(communityPostRepository).incrementCommentCount(20L);
+        verify(postStatsRepository).incrementCommentCount(20L);
     }
 
     @Test
@@ -249,6 +224,7 @@ class CommunityServiceP0Test {
         assertThat(captor.getValue().getAuthorNickname()).isEqualTo("tester");
         assertThat(captor.getValue().getAptId()).isNull();
         verify(communityPostRepository).incrementLikeCount(20L);
+        verify(postStatsRepository).incrementLikeCount(20L);
     }
 
     @Test
@@ -315,7 +291,7 @@ class CommunityServiceP0Test {
 
     @Test
     void getPopularPosts_globalBlah_fallsBackToPostsWhenStatsRowsAreMissing() {
-        CommunityPost fallback = post(51L, null, "GLOBAL", "BLAH", "BLAH");
+        CommunityPost fallback = post(51L, null, "GLOBAL", "BLAH", "블라블라");
         when(communityPostRepository.findRankedPopularByScope("GLOBAL", "BLAH", 5))
                 .thenReturn(List.of());
         when(communityPostRepository.findPopularByScope(eq("GLOBAL"), eq("BLAH"), any(Pageable.class)))
@@ -345,7 +321,7 @@ class CommunityServiceP0Test {
 
     @Test
     void getMostCommentedPosts_globalBlah_fallsBackToPostsWhenStatsRowsAreMissing() {
-        CommunityPost fallback = post(61L, null, "GLOBAL", "BLAH", "BLAH");
+        CommunityPost fallback = post(61L, null, "GLOBAL", "BLAH", "블라블라");
         ReflectionTestUtils.setField(fallback, "commentCount", 3);
         when(communityPostRepository.findRankedMostCommentedByScope("GLOBAL", "BLAH", 5))
                 .thenReturn(List.of());
@@ -374,7 +350,7 @@ class CommunityServiceP0Test {
     void getTrendingKeywords_globalBoard_fallsBackToPostTextWhenStatsRowsAreMissing() {
         CommunityPost post = CommunityPost.create(
                 null,
-                "BLAH",
+                "블라블라",
                 "GLOBAL",
                 "BLAH",
                 "loan rate",

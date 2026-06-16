@@ -134,7 +134,7 @@ public class CommunityService {
                         request.title().trim(),
                         request.content().trim(),
                         user.getNickname(),
-                        firstNonBlank(verifiedAptName, SCOPE_GLOBAL.equals(scope) ? "전체 커뮤니티" : request.complexName(), "아파트"),
+                        firstNonBlank(verifiedAptName, SCOPE_GLOBAL.equals(scope) ? "전체 커뮤니티" : "아파트"),
                         user.getId(),
                         verifiedAptId,
                         verifiedAptName,
