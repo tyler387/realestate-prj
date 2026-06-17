@@ -4,15 +4,14 @@ import { ApartmentHeader } from '../components/features/trade/ApartmentHeader'
 import { TradeTypeFilter, type TradeType } from '../components/features/trade/TradeTypeFilter'
 import { PriceChart } from '../components/features/trade/PriceChart'
 import { TradeHistoryList } from '../components/features/trade/TradeHistoryList'
-import { useApartmentTrade } from '../hooks/useApartmentTrade'
+import { useApartmentTrade, type PriceHistoryRange } from '../hooks/useApartmentTrade'
 import { useTradeFilterStore } from '../stores/tradeFilterStore'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
+import { RENT_READY_NOTICE, normalizeSupportedDealType } from '../utils/tradeType'
 
-const DEAL_TYPE_TO_TRADE_TYPE: Record<'SALE' | 'JEONSE' | 'MONTHLY', Exclude<TradeType, 'all'>> = {
-  SALE:    '매매',
-  JEONSE:  '전세',
-  MONTHLY: '월세',
+const DEAL_TYPE_TO_TRADE_TYPE: Record<'SALE', Exclude<TradeType, 'all'>> = {
+  SALE: '매매',
 }
 
 export const ApartmentTradePage = () => {
@@ -20,17 +19,27 @@ export const ApartmentTradePage = () => {
   const aptId = Number(id)
   const [selectedType, setSelectedType] = useState<TradeType>('all')
   const [selectedArea, setSelectedArea] = useState<number | null>(null)
+  const [priceHistoryRange, setPriceHistoryRange] = useState<PriceHistoryRange>('1y')
   const [isFavorite, setIsFavorite] = useState(false)
   const status = useUserStore((s) => s.status)
   const openAuthSheet = useUiStore((s) => s.openAuthSheet)
   const dealType = useTradeFilterStore((s) => s.dealType)
 
-  const { summaryQuery, tradesQuery, tradeAreasQuery, priceHistoryQuery } = useApartmentTrade(aptId, selectedArea)
+  const { summaryQuery, tradesQuery, tradeAreasQuery, priceHistoryQuery } = useApartmentTrade(
+    aptId,
+    selectedArea,
+    priceHistoryRange,
+  )
 
   const apartment = summaryQuery.data
   const records = tradesQuery.data ?? []
   const areaOptions = tradeAreasQuery.data ?? []
   const priceHistory = priceHistoryQuery.data ?? []
+  const effectiveDealType = normalizeSupportedDealType(dealType)
+
+  useEffect(() => {
+    if (selectedType === '전세' || selectedType === '월세') setSelectedType('all')
+  }, [selectedType])
 
   useEffect(() => {
     if (areaOptions.length === 0) return
@@ -40,8 +49,8 @@ export const ApartmentTradePage = () => {
 
   const latestPrice = apartment?.latestPrice ?? 0
   const chartTradeType =
-    selectedType === 'all' && dealType
-      ? DEAL_TYPE_TO_TRADE_TYPE[dealType]
+    selectedType === 'all' && effectiveDealType
+      ? DEAL_TYPE_TO_TRADE_TYPE[effectiveDealType]
       : selectedType
 
   const priceChangeRate = (() => {
@@ -87,6 +96,9 @@ export const ApartmentTradePage = () => {
         onFavoriteToggle={handleFavoriteToggle}
       />
       <TradeTypeFilter value={selectedType} onChange={setSelectedType} />
+      <div className="border-b border-gray-100 bg-gray-50 px-4 py-2">
+        <p className="text-xs text-gray-500">{RENT_READY_NOTICE}</p>
+      </div>
       <PriceChart
         data={priceHistory}
         records={records}
@@ -94,6 +106,8 @@ export const ApartmentTradePage = () => {
         areaOptions={areaOptions}
         selectedArea={selectedArea}
         onAreaChange={setSelectedArea}
+        priceHistoryRange={priceHistoryRange}
+        onPriceHistoryRangeChange={setPriceHistoryRange}
       />
       <p className="px-4 py-2 text-sm font-semibold text-gray-700">최근 실거래 내역</p>
       <TradeHistoryList records={records} selectedType={selectedType} selectedArea={selectedArea} />

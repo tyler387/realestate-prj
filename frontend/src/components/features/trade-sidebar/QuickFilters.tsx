@@ -11,6 +11,7 @@ import { useUserStore } from '../../../stores/userStore'
 import { SidebarCard, CardTitle } from '../sidebar/SidebarCard'
 import { FilterGroup } from './FilterGroup'
 import { FilterChip } from './FilterChip'
+import { normalizeSupportedDealType } from '../../../utils/tradeType'
 
 type SavedPayload = {
   priceRange: 'UNDER_10' | '10_20' | 'OVER_20' | null
@@ -40,8 +41,8 @@ const PRICE_RANGE_OPTIONS = [
 
 const DEAL_TYPE_OPTIONS = [
   { label: '매매', value: 'SALE' as const },
-  { label: '전세', value: 'JEONSE' as const },
-  { label: '월세', value: 'MONTHLY' as const },
+  { label: '전세', value: 'JEONSE' as const, disabled: true, badge: '준비중' },
+  { label: '월세', value: 'MONTHLY' as const, disabled: true, badge: '준비중' },
 ]
 
 const AREA_RANGE_OPTIONS = [
@@ -132,7 +133,7 @@ export const QuickFilters = () => {
 
   const applySavedPayload = (data: SavedPayload) => {
     setPriceRange(data.priceRange)
-    setDealType(data.dealType)
+    setDealType(normalizeSupportedDealType(data.dealType))
     setAreaRange(data.areaRange)
     setPreset(data.preset)
     setFloorBand(data.floorBand)
@@ -204,6 +205,8 @@ export const QuickFilters = () => {
                 key={opt.value}
                 label={opt.label}
                 isSelected={dealType === opt.value}
+                disabled={opt.disabled}
+                badge={opt.badge}
                 onClick={() => setDealType(dealType === opt.value ? null : opt.value)}
               />
             ))}

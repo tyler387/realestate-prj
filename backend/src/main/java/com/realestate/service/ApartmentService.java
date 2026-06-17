@@ -289,6 +289,10 @@ public class ApartmentService {
             return new DateRange(startDate, endDate);
         }
 
+        if ("all".equals(period)) {
+            return new DateRange(LocalDate.of(1900, 1, 1), LocalDate.now());
+        }
+
         int months = switch (period == null ? "1m" : period) {
             case "3m" -> 3;
             case "6m" -> 6;

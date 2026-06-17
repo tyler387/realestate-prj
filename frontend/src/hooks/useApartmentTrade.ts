@@ -2,8 +2,11 @@ import { useQuery } from '@tanstack/react-query'
 import type { TradeApartment as Apartment, TradeAreaOption, TradeRecord, PriceHistory } from '../types/trade'
 import { useTradeFilterStore } from '../stores/tradeFilterStore'
 import { useUiStore } from '../stores/uiStore'
+import { normalizeSupportedDealType, toTradeTypeLabel } from '../utils/tradeType'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
+
+export type PriceHistoryRange = '1y' | 'all'
 
 type ApiSummary = {
   id: number
@@ -42,13 +45,11 @@ const toAreaParam = (area: number) => {
   return fixed.replace(/\.?0+$/, '')
 }
 
-const toTradeTypeLabel = (tradeType: string): '매매' | '전세' | '월세' => {
-  if (tradeType === 'LEASE' || tradeType === '전세') return '전세'
-  if (tradeType === 'MONTHLY' || tradeType === '월세') return '월세'
-  return '매매'
-}
-
-export const useApartmentTrade = (aptId: number, selectedArea: number | null) => {
+export const useApartmentTrade = (
+  aptId: number,
+  selectedArea: number | null,
+  priceHistoryRange: PriceHistoryRange,
+) => {
   const {
     priceRange,
     dealType,
@@ -70,10 +71,12 @@ export const useApartmentTrade = (aptId: number, selectedArea: number | null) =>
     tradePeriod !== 'custom' ||
     (!!tradeCustomStartDate && !!tradeCustomEndDate && tradeCustomStartDate <= tradeCustomEndDate)
 
+  const effectiveDealType = normalizeSupportedDealType(dealType)
+
   const buildTradeParams = (includeExclusiveArea: boolean) => {
     const params = new URLSearchParams({ period: tradePeriod })
     if (priceRange) params.set('priceRange', priceRange)
-    if (dealType) params.set('dealType', dealType)
+    if (effectiveDealType) params.set('dealType', effectiveDealType)
     if (areaRange) params.set('areaRange', areaRange)
     if (preset) params.set('preset', preset)
     if (floorBand) params.set('floorBand', floorBand)
@@ -85,6 +88,26 @@ export const useApartmentTrade = (aptId: number, selectedArea: number | null) =>
       params.set('endDate', tradeCustomEndDate)
     }
     if (includeExclusiveArea && selectedArea != null) {
+      params.set('exclusiveArea', toAreaParam(selectedArea))
+    }
+
+    const query = params.toString()
+    return query ? `?${query}` : ''
+  }
+
+  const buildPriceHistoryParams = () => {
+    const params = new URLSearchParams({
+      period: priceHistoryRange === 'all' ? 'all' : '12m',
+    })
+    if (priceRange) params.set('priceRange', priceRange)
+    if (effectiveDealType) params.set('dealType', effectiveDealType)
+    if (areaRange) params.set('areaRange', areaRange)
+    if (preset) params.set('preset', preset)
+    if (floorBand) params.set('floorBand', floorBand)
+    if (yearBand) params.set('yearBand', yearBand)
+    if (complexKeyword) params.set('complexKeyword', complexKeyword)
+    if (excludeOutliers) params.set('excludeOutliers', 'true')
+    if (selectedArea != null) {
       params.set('exclusiveArea', toAreaParam(selectedArea))
     }
 
@@ -166,9 +189,7 @@ export const useApartmentTrade = (aptId: number, selectedArea: number | null) =>
       'priceHistory',
       aptId,
       selectedArea,
-      tradePeriod,
-      tradeCustomStartDate,
-      tradeCustomEndDate,
+      priceHistoryRange,
       priceRange,
       dealType,
       areaRange,
@@ -179,7 +200,7 @@ export const useApartmentTrade = (aptId: number, selectedArea: number | null) =>
       excludeOutliers,
     ],
     queryFn: () =>
-      fetch(`${API_BASE_URL}/api/v1/apartments/${aptId}/price-history${buildTradeParams(true)}`)
+      fetch(`${API_BASE_URL}/api/v1/apartments/${aptId}/price-history${buildPriceHistoryParams()}`)
         .then((r) => r.json())
         .then((data: ApiPriceHistory[]) =>
           data.map((h) => ({
@@ -190,7 +211,7 @@ export const useApartmentTrade = (aptId: number, selectedArea: number | null) =>
             tradeType: toTradeTypeLabel(h.tradeType),
           }))
         ),
-    enabled: !!aptId && selectedArea != null && isCustomRangeValid,
+    enabled: !!aptId && selectedArea != null,
     staleTime: 1000 * 60 * 10,
   })
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
+import { normalizeSupportedDealType, type DealType } from '../utils/tradeType'
 
 type PriceRange = 'UNDER_10' | '10_20' | 'OVER_20' | null
-type DealType   = 'SALE' | 'JEONSE' | 'MONTHLY' | null
 type AreaRange  = '20' | '30' | '40' | null
 type QuickPreset = 'NEW' | 'LARGE' | 'HOT' | null
 type FloorBand = 'LOW' | 'MID' | 'HIGH' | null
@@ -47,7 +47,7 @@ export const useTradeFilterStore = create<TradeFilterState>((set) => ({
 
   setAptId:      (aptId) => set({ aptId }),
   setPriceRange: (priceRange) => set({ priceRange, aptId: null }),
-  setDealType:   (dealType)   => set({ dealType,   aptId: null }),
+  setDealType:   (dealType)   => set({ dealType: normalizeSupportedDealType(dealType), aptId: null }),
   setAreaRange:  (areaRange)  => set({ areaRange,  aptId: null }),
   setPreset:     (preset) => set({ preset, aptId: null }),
   setFloorBand:  (floorBand) => set({ floorBand, aptId: null }),

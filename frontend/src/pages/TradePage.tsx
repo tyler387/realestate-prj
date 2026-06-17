@@ -9,12 +9,14 @@ import { MobileTradeFilterDrawer } from '../components/features/trade-sidebar/Mo
 import { useUiStore } from '../stores/uiStore'
 import { useTradeFilterStore } from '../stores/tradeFilterStore'
 import type { TopApartment } from '../types/trade'
+import { UNSUPPORTED_RENT_NOTICE, isUnsupportedRentDealType, normalizeSupportedDealType } from '../utils/tradeType'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
 
 export const TradePage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+  const [showUnsupportedDealTypeNotice, setShowUnsupportedDealTypeNotice] = useState(false)
   const {
     tradePeriod,
     setTradePeriod,
@@ -41,6 +43,8 @@ export const TradePage = () => {
     && !!tradeCustomEndDate
     && tradeCustomStartDate <= tradeCustomEndDate
 
+  const effectiveDealType = normalizeSupportedDealType(dealType)
+
   const { data: rankings = [], isLoading, isFetching } = useQuery<TopApartment[]>({
     queryKey: [
       'trade',
@@ -60,7 +64,7 @@ export const TradePage = () => {
     queryFn: () => {
       const params = new URLSearchParams({ period: tradePeriod })
       if (priceRange) params.set('priceRange', priceRange)
-      if (dealType) params.set('dealType', dealType)
+      if (effectiveDealType) params.set('dealType', effectiveDealType)
       if (areaRange) params.set('areaRange', areaRange)
       if (preset) params.set('preset', preset)
       if (floorBand) params.set('floorBand', floorBand)
@@ -104,7 +108,8 @@ export const TradePage = () => {
   useEffect(() => {
     const aptIdParam = searchParams.get('aptId')
     const priceRangeParam = searchParams.get('priceRange') as 'UNDER_10' | '10_20' | 'OVER_20' | null
-    const dealTypeParam = searchParams.get('dealType') as 'SALE' | 'JEONSE' | 'MONTHLY' | null
+    const rawDealTypeParam = searchParams.get('dealType') as 'SALE' | 'JEONSE' | 'MONTHLY' | null
+    const dealTypeParam = normalizeSupportedDealType(rawDealTypeParam)
     const areaRangeParam = searchParams.get('areaRange') as '20' | '30' | '40' | null
     const presetParam = searchParams.get('preset') as 'NEW' | 'LARGE' | 'HOT' | null
     const floorBandParam = searchParams.get('floorBand') as 'LOW' | 'MID' | 'HIGH' | null
@@ -113,6 +118,8 @@ export const TradePage = () => {
     const periodParam = searchParams.get('period') as '1m' | '3m' | '6m' | '12m' | 'custom' | null
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')
+
+    if (isUnsupportedRentDealType(rawDealTypeParam)) setShowUnsupportedDealTypeNotice(true)
 
     if (aptIdParam !== aptId) setAptId(aptIdParam)
     if (priceRangeParam !== priceRange) setPriceRange(priceRangeParam)
@@ -136,7 +143,7 @@ export const TradePage = () => {
     next.set('period', tradePeriod)
     if (aptId) next.set('aptId', aptId)
     if (priceRange) next.set('priceRange', priceRange)
-    if (dealType) next.set('dealType', dealType)
+    if (effectiveDealType) next.set('dealType', effectiveDealType)
     if (areaRange) next.set('areaRange', areaRange)
     if (preset) next.set('preset', preset)
     if (floorBand) next.set('floorBand', floorBand)
@@ -158,6 +165,7 @@ export const TradePage = () => {
     aptId,
     priceRange,
     dealType,
+    effectiveDealType,
     areaRange,
     preset,
     floorBand,
@@ -208,6 +216,12 @@ export const TradePage = () => {
 
       {aptId && aptName && (
         <AptFilterBanner aptName={aptName} onClear={() => setAptId(null)} />
+      )}
+
+      {showUnsupportedDealTypeNotice && (
+        <div className="mx-4 mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+          <p className="text-xs text-blue-700">{UNSUPPORTED_RENT_NOTICE}</p>
+        </div>
       )}
 
       <PeriodFilter

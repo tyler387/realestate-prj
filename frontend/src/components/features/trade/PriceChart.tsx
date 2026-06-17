@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { type PriceHistory, type TradeAreaOption, type TradeRecord } from '../../../types/trade'
 import { type TradeType } from './TradeTypeFilter'
 import { formatPrice } from '../../../utils/formatPrice'
+import { type PriceHistoryRange } from '../../../hooks/useApartmentTrade'
 
 type Props = {
   data: PriceHistory[]
@@ -10,6 +11,8 @@ type Props = {
   areaOptions: TradeAreaOption[]
   selectedArea: number | null
   onAreaChange: (area: number) => void
+  priceHistoryRange: PriceHistoryRange
+  onPriceHistoryRangeChange: (range: PriceHistoryRange) => void
 }
 
 type ChartMode = 'average' | 'trades' | 'pyeong'
@@ -29,6 +32,11 @@ const MODE_OPTIONS: Array<{ value: ChartMode; label: string }> = [
   { value: 'average', label: '평균가' },
   { value: 'trades', label: '실거래가' },
   { value: 'pyeong', label: '평당가' },
+]
+
+const RANGE_OPTIONS: Array<{ value: PriceHistoryRange; label: string }> = [
+  { value: '1y', label: '최근 1년' },
+  { value: 'all', label: '전체' },
 ]
 
 const CHART_WIDTH = 340
@@ -59,7 +67,16 @@ const average = (values: number[]) => {
 
 const lineFrom = (points: ChartPoint[]) => points.map((point) => `${point.x},${point.y}`).join(' ')
 
-export const PriceChart = ({ data, records, tradeType, areaOptions, selectedArea, onAreaChange }: Props) => {
+export const PriceChart = ({
+  data,
+  records,
+  tradeType,
+  areaOptions,
+  selectedArea,
+  onAreaChange,
+  priceHistoryRange,
+  onPriceHistoryRangeChange,
+}: Props) => {
   const [mode, setMode] = useState<ChartMode>('average')
   const [tooltip, setTooltip] = useState<Tooltip | null>(null)
   const targetType = tradeType === 'all' ? '매매' : tradeType
@@ -127,6 +144,8 @@ export const PriceChart = ({ data, records, tradeType, areaOptions, selectedArea
           onAreaChange={onAreaChange}
           onModeChange={setMode}
           targetType={targetType}
+          priceHistoryRange={priceHistoryRange}
+          onPriceHistoryRangeChange={onPriceHistoryRangeChange}
         />
         <div className="flex h-40 items-center justify-center">
           <span className="text-sm text-gray-400">선택한 조건의 차트 데이터가 없습니다</span>
@@ -216,6 +235,8 @@ export const PriceChart = ({ data, records, tradeType, areaOptions, selectedArea
         onAreaChange={onAreaChange}
         onModeChange={setMode}
         targetType={targetType}
+        priceHistoryRange={priceHistoryRange}
+        onPriceHistoryRangeChange={onPriceHistoryRangeChange}
       />
 
       <div className="relative h-56">
@@ -304,25 +325,52 @@ type ChartHeaderProps = {
   onAreaChange: (area: number) => void
   onModeChange: (mode: ChartMode) => void
   targetType: Exclude<TradeType, 'all'>
+  priceHistoryRange: PriceHistoryRange
+  onPriceHistoryRangeChange: (range: PriceHistoryRange) => void
 }
 
-const ChartHeader = ({ areaOptions, mode, selectedArea, onAreaChange, onModeChange, targetType }: ChartHeaderProps) => (
+const ChartHeader = ({
+  areaOptions,
+  mode,
+  selectedArea,
+  onAreaChange,
+  onModeChange,
+  targetType,
+  priceHistoryRange,
+  onPriceHistoryRangeChange,
+}: ChartHeaderProps) => (
   <div className="mb-3">
-    <div className="mb-3 flex items-center justify-between gap-3">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm font-semibold text-gray-700">가격 흐름 ({targetType})</p>
-      <div className="flex shrink-0 rounded-lg bg-gray-100 p-1">
-        {MODE_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onModeChange(option.value)}
-            className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
-              mode === option.value ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-700'
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
+      <div className="flex min-w-0 flex-wrap justify-end gap-2">
+        <div className="flex shrink-0 rounded-lg bg-gray-100 p-1">
+          {RANGE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onPriceHistoryRangeChange(option.value)}
+              className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
+                priceHistoryRange === option.value ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-700'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex shrink-0 rounded-lg bg-gray-100 p-1">
+          {MODE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onModeChange(option.value)}
+              className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
+                mode === option.value ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-700'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
 
