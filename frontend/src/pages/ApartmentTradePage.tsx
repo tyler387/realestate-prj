@@ -19,6 +19,7 @@ export const ApartmentTradePage = () => {
   const aptId = Number(id)
   const [selectedType, setSelectedType] = useState<TradeType>('all')
   const [selectedArea, setSelectedArea] = useState<number | null>(null)
+  // 상세 차트 기간은 상단 실거래 목록 기간 필터와 독립적으로 운용한다.
   const [priceHistoryRange, setPriceHistoryRange] = useState<PriceHistoryRange>('1y')
   const [isFavorite, setIsFavorite] = useState(false)
   const status = useUserStore((s) => s.status)
@@ -38,6 +39,7 @@ export const ApartmentTradePage = () => {
   const effectiveDealType = normalizeSupportedDealType(dealType)
 
   useEffect(() => {
+    // 외부 상태로 전월세 타입이 유입돼도 상세 탭은 매매 중심 UX로 복구한다.
     if (selectedType === '전세' || selectedType === '월세') setSelectedType('all')
   }, [selectedType])
 
@@ -48,6 +50,7 @@ export const ApartmentTradePage = () => {
   }, [areaOptions, selectedArea])
 
   const latestPrice = apartment?.latestPrice ?? 0
+  const tradeHistoryTitle = priceHistoryRange === 'all' ? '전체 실거래 내역' : '최근 1년 실거래 내역'
   const chartTradeType =
     selectedType === 'all' && effectiveDealType
       ? DEAL_TYPE_TO_TRADE_TYPE[effectiveDealType]
@@ -109,7 +112,7 @@ export const ApartmentTradePage = () => {
         priceHistoryRange={priceHistoryRange}
         onPriceHistoryRangeChange={setPriceHistoryRange}
       />
-      <p className="px-4 py-2 text-sm font-semibold text-gray-700">최근 실거래 내역</p>
+      <p className="px-4 py-2 text-sm font-semibold text-gray-700">{tradeHistoryTitle}</p>
       <TradeHistoryList records={records} selectedType={selectedType} selectedArea={selectedArea} />
     </div>
   )

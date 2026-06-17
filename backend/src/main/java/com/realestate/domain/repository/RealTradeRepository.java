@@ -40,6 +40,7 @@ public interface RealTradeRepository extends JpaRepository<RealTrade, Long> {
               AND r.is_cancelled = false
               AND r.trade_date BETWEEN :startDate AND :endDate
               AND (:tradeType IS NULL OR r.trade_type = :tradeType)
+              AND (:exclusiveArea IS NULL OR r.exclusive_area = :exclusiveArea)
               AND (:minPrice IS NULL OR r.trade_amount >= :minPrice)
               AND (:maxPrice IS NULL OR r.trade_amount <= :maxPrice)
               AND (:minArea IS NULL OR r.exclusive_area >= :minArea)
@@ -53,13 +54,13 @@ public interface RealTradeRepository extends JpaRepository<RealTrade, Long> {
               AND (:complexKeyword IS NULL OR TRIM(:complexKeyword) = '' OR a.complex_name ILIKE CONCAT('%', :complexKeyword, '%'))
               AND (:excludeOutliers = false OR (r.price_per_pyeong IS NOT NULL AND r.price_per_pyeong > 0))
             ORDER BY r.trade_date DESC, r.id DESC
-            LIMIT 50
             """, nativeQuery = true)
     List<TradeRecordProjection> findRecentByApartmentIdWithFilters(
             @Param("aptId") Long aptId,
             @Param("startDate") java.time.LocalDate startDate,
             @Param("endDate") java.time.LocalDate endDate,
             @Param("tradeType") String tradeType,
+            @Param("exclusiveArea") java.math.BigDecimal exclusiveArea,
             @Param("minPrice") Long minPrice,
             @Param("maxPrice") Long maxPrice,
             @Param("minArea") Double minArea,

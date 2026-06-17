@@ -1,6 +1,6 @@
-﻿import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTradeFilterStore } from '../../../stores/tradeFilterStore'
-import { useUiStore } from '../../../stores/uiStore'
+import { type TradePeriod, useUiStore } from '../../../stores/uiStore'
 import {
   useCreateSavedTradeFilter,
   useDeleteSavedTradeFilter,
@@ -8,23 +8,43 @@ import {
   useUpdateSavedTradeFilter,
 } from '../../../hooks/useSavedTradeFilters'
 import { useUserStore } from '../../../stores/userStore'
+import { normalizeSupportedDealType, type DealType } from '../../../utils/tradeType'
 import { SidebarCard, CardTitle } from '../sidebar/SidebarCard'
 import { FilterGroup } from './FilterGroup'
 import { FilterChip } from './FilterChip'
-import { normalizeSupportedDealType } from '../../../utils/tradeType'
 
 type SavedPayload = {
   priceRange: 'UNDER_10' | '10_20' | 'OVER_20' | null
-  dealType: 'SALE' | 'JEONSE' | 'MONTHLY' | null
+  dealType: DealType
   areaRange: '20' | '30' | '40' | null
   preset: 'NEW' | 'LARGE' | 'HOT' | null
   floorBand: 'LOW' | 'MID' | 'HIGH' | null
   yearBand: 'NEW_0_10' | 'MID_11_20' | 'OLD_21_PLUS' | null
   complexKeyword: string | null
   excludeOutliers: boolean
-  tradePeriod: '1m' | '3m' | '6m' | '12m' | 'custom'
+  tradePeriod: TradePeriod
   tradeCustomStartDate: string | null
   tradeCustomEndDate: string | null
+}
+
+type QuickFiltersProps = {
+  mode?: 'instant' | 'draft'
+  onApplied?: () => void
+}
+
+// 모바일 드로어는 draft로 먼저 편집하고, 적용 버튼을 누를 때만 실제 조회 필터에 반영한다.
+const DEFAULT_FILTER_VALUES: SavedPayload = {
+  priceRange: null,
+  dealType: null,
+  areaRange: null,
+  preset: null,
+  floorBand: null,
+  yearBand: null,
+  complexKeyword: null,
+  excludeOutliers: false,
+  tradePeriod: '1m',
+  tradeCustomStartDate: null,
+  tradeCustomEndDate: null,
 }
 
 const PRESET_OPTIONS = [
@@ -41,6 +61,7 @@ const PRICE_RANGE_OPTIONS = [
 
 const DEAL_TYPE_OPTIONS = [
   { label: '매매', value: 'SALE' as const },
+  // 전월세 수집기 도입 전까지 실거래탭은 매매만 조회 대상으로 제공한다.
   { label: '전세', value: 'JEONSE' as const, disabled: true, badge: '준비중' },
   { label: '월세', value: 'MONTHLY' as const, disabled: true, badge: '준비중' },
 ]
@@ -63,7 +84,7 @@ const YEAR_BAND_OPTIONS = [
   { label: '구축(21년+)', value: 'OLD_21_PLUS' as const },
 ]
 
-export const QuickFilters = () => {
+export const QuickFilters = ({ mode = 'instant', onApplied }: QuickFiltersProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showOutlierTooltip, setShowOutlierTooltip] = useState(false)
   const [saveName, setSaveName] = useState('')
@@ -99,25 +120,7 @@ export const QuickFilters = () => {
     setTradeCustomDateRange,
   } = useUiStore()
 
-  const savedFiltersQuery = useSavedTradeFilters(status !== 'GUEST')
-  const createSaved = useCreateSavedTradeFilter()
-  const updateSaved = useUpdateSavedTradeFilter()
-  const deleteSaved = useDeleteSavedTradeFilter()
-
-  const activeCount = useMemo(() => {
-    let count = 0
-    if (preset) count += 1
-    if (priceRange) count += 1
-    if (dealType) count += 1
-    if (areaRange) count += 1
-    if (excludeOutliers) count += 1
-    if (floorBand) count += 1
-    if (yearBand) count += 1
-    if (complexKeyword) count += 1
-    return count
-  }, [preset, priceRange, dealType, areaRange, excludeOutliers, floorBand, yearBand, complexKeyword])
-
-  const payload: SavedPayload = {
+  const storeValues = useMemo<SavedPayload>(() => ({
     priceRange,
     dealType,
     areaRange,
@@ -129,19 +132,84 @@ export const QuickFilters = () => {
     tradePeriod,
     tradeCustomStartDate,
     tradeCustomEndDate,
+  }), [
+    priceRange,
+    dealType,
+    areaRange,
+    preset,
+    floorBand,
+    yearBand,
+    complexKeyword,
+    excludeOutliers,
+    tradePeriod,
+    tradeCustomStartDate,
+    tradeCustomEndDate,
+  ])
+
+  const [draftValues, setDraftValues] = useState<SavedPayload>(() => storeValues)
+
+  useEffect(() => {
+    // 드로어를 열 때마다 현재 적용 상태를 draft의 시작점으로 맞춘다.
+    if (mode === 'draft') setDraftValues(storeValues)
+  }, [mode, storeValues])
+
+  const values = mode === 'draft' ? draftValues : storeValues
+
+  const savedFiltersQuery = useSavedTradeFilters(status !== 'GUEST')
+  const createSaved = useCreateSavedTradeFilter()
+  const updateSaved = useUpdateSavedTradeFilter()
+  const deleteSaved = useDeleteSavedTradeFilter()
+
+  const applyValuesToStore = (next: SavedPayload) => {
+    // setter는 aptId 의존 필터를 정리하므로, 필터 적용은 항상 이 경로로 모은다.
+    setPriceRange(next.priceRange)
+    setDealType(normalizeSupportedDealType(next.dealType))
+    setAreaRange(next.areaRange)
+    setPreset(next.preset)
+    setFloorBand(next.floorBand)
+    setYearBand(next.yearBand)
+    setComplexKeyword(next.complexKeyword)
+    setExcludeOutliers(Boolean(next.excludeOutliers))
+    setTradePeriod(next.tradePeriod)
+    setTradeCustomDateRange(next.tradeCustomStartDate, next.tradeCustomEndDate)
   }
 
+  const updateValue = <K extends keyof SavedPayload>(key: K, value: SavedPayload[K]) => {
+    if (mode === 'draft') {
+      setDraftValues((current) => ({ ...current, [key]: value }))
+      return
+    }
+
+    applyValuesToStore({ ...storeValues, [key]: value })
+  }
+
+  const normalizePayload = (data: SavedPayload): SavedPayload => ({
+    ...data,
+    dealType: normalizeSupportedDealType(data.dealType),
+  })
+
+  const activeCount = useMemo(() => {
+    let count = 0
+    if (values.preset) count += 1
+    if (values.priceRange) count += 1
+    if (values.dealType) count += 1
+    if (values.areaRange) count += 1
+    if (values.excludeOutliers) count += 1
+    if (values.floorBand) count += 1
+    if (values.yearBand) count += 1
+    if (values.complexKeyword) count += 1
+    return count
+  }, [values])
+
+  const payload: SavedPayload = values
+
   const applySavedPayload = (data: SavedPayload) => {
-    setPriceRange(data.priceRange)
-    setDealType(normalizeSupportedDealType(data.dealType))
-    setAreaRange(data.areaRange)
-    setPreset(data.preset)
-    setFloorBand(data.floorBand)
-    setYearBand(data.yearBand)
-    setComplexKeyword(data.complexKeyword)
-    setExcludeOutliers(Boolean(data.excludeOutliers))
-    setTradePeriod(data.tradePeriod)
-    setTradeCustomDateRange(data.tradeCustomStartDate, data.tradeCustomEndDate)
+    const next = normalizePayload(data)
+    if (mode === 'draft') {
+      setDraftValues(next)
+      return
+    }
+    applyValuesToStore(next)
   }
 
   const handleCreate = async () => {
@@ -162,6 +230,22 @@ export const QuickFilters = () => {
     if (selectedSavedId === id) setSelectedSavedId(null)
   }
 
+  const handleApply = () => {
+    if (mode === 'draft') applyValuesToStore(draftValues)
+    onApplied?.()
+  }
+
+  const handleReset = () => {
+    if (mode === 'draft') {
+      setDraftValues(DEFAULT_FILTER_VALUES)
+      return
+    }
+
+    resetFilters()
+    setTradePeriod(DEFAULT_FILTER_VALUES.tradePeriod)
+    setTradeCustomDateRange(DEFAULT_FILTER_VALUES.tradeCustomStartDate, DEFAULT_FILTER_VALUES.tradeCustomEndDate)
+  }
+
   return (
     <SidebarCard>
       <div className="mb-3 flex items-center justify-between">
@@ -180,8 +264,8 @@ export const QuickFilters = () => {
           <FilterChip
             key={opt.value}
             label={opt.label}
-            isSelected={preset === opt.value}
-            onClick={() => setPreset(preset === opt.value ? null : opt.value)}
+            isSelected={values.preset === opt.value}
+            onClick={() => updateValue('preset', values.preset === opt.value ? null : opt.value)}
           />
         ))}
       </FilterGroup>
@@ -193,8 +277,8 @@ export const QuickFilters = () => {
               <FilterChip
                 key={opt.value}
                 label={opt.label}
-                isSelected={priceRange === opt.value}
-                onClick={() => setPriceRange(priceRange === opt.value ? null : opt.value)}
+                isSelected={values.priceRange === opt.value}
+                onClick={() => updateValue('priceRange', values.priceRange === opt.value ? null : opt.value)}
               />
             ))}
           </FilterGroup>
@@ -204,10 +288,10 @@ export const QuickFilters = () => {
               <FilterChip
                 key={opt.value}
                 label={opt.label}
-                isSelected={dealType === opt.value}
+                isSelected={values.dealType === opt.value}
                 disabled={opt.disabled}
                 badge={opt.badge}
-                onClick={() => setDealType(dealType === opt.value ? null : opt.value)}
+                onClick={() => updateValue('dealType', values.dealType === opt.value ? null : opt.value)}
               />
             ))}
           </FilterGroup>
@@ -217,8 +301,8 @@ export const QuickFilters = () => {
               <FilterChip
                 key={opt.value}
                 label={opt.label}
-                isSelected={areaRange === opt.value}
-                onClick={() => setAreaRange(areaRange === opt.value ? null : opt.value)}
+                isSelected={values.areaRange === opt.value}
+                onClick={() => updateValue('areaRange', values.areaRange === opt.value ? null : opt.value)}
               />
             ))}
           </FilterGroup>
@@ -228,8 +312,8 @@ export const QuickFilters = () => {
               <FilterChip
                 key={opt.value}
                 label={opt.label}
-                isSelected={floorBand === opt.value}
-                onClick={() => setFloorBand(floorBand === opt.value ? null : opt.value)}
+                isSelected={values.floorBand === opt.value}
+                onClick={() => updateValue('floorBand', values.floorBand === opt.value ? null : opt.value)}
               />
             ))}
           </FilterGroup>
@@ -239,8 +323,8 @@ export const QuickFilters = () => {
               <FilterChip
                 key={opt.value}
                 label={opt.label}
-                isSelected={yearBand === opt.value}
-                onClick={() => setYearBand(yearBand === opt.value ? null : opt.value)}
+                isSelected={values.yearBand === opt.value}
+                onClick={() => updateValue('yearBand', values.yearBand === opt.value ? null : opt.value)}
               />
             ))}
           </FilterGroup>
@@ -249,8 +333,8 @@ export const QuickFilters = () => {
             <p className="mb-1.5 text-xs font-medium text-gray-500">단지명 키워드</p>
             <input
               type="text"
-              value={complexKeyword ?? ''}
-              onChange={(e) => setComplexKeyword(e.target.value.trim() === '' ? null : e.target.value.trim())}
+              value={values.complexKeyword ?? ''}
+              onChange={(e) => updateValue('complexKeyword', e.target.value.trim() === '' ? null : e.target.value.trim())}
               placeholder="예: 래미안, 자이"
               className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-xs text-gray-700"
             />
@@ -274,8 +358,8 @@ export const QuickFilters = () => {
               </span>
               <input
                 type="checkbox"
-                checked={excludeOutliers}
-                onChange={(e) => setExcludeOutliers(e.target.checked)}
+                checked={values.excludeOutliers}
+                onChange={(e) => updateValue('excludeOutliers', e.target.checked)}
                 className="h-4 w-4 accent-blue-500"
               />
             </label>
@@ -356,18 +440,20 @@ export const QuickFilters = () => {
         <p className="text-xs text-gray-500">
           현재 조건 <span className="font-semibold text-gray-800">{resultCount ?? '-'}건</span>
           <span className="ml-2 text-gray-400">적용 필터 {activeCount}개</span>
+          {mode === 'draft' && <span className="ml-2 text-gray-400">적용 전</span>}
         </p>
 
         <div className="mt-2 flex gap-2">
           <button
             type="button"
+            onClick={handleApply}
             className="flex-1 rounded-lg bg-blue-500 px-3 py-2 text-xs font-semibold text-white"
           >
             적용
           </button>
           <button
             type="button"
-            onClick={resetFilters}
+            onClick={handleReset}
             className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600"
           >
             초기화

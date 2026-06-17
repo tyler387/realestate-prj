@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import type { TradeApartment as Apartment, TradeAreaOption, TradeRecord, PriceHistory } from '../types/trade'
 import { useTradeFilterStore } from '../stores/tradeFilterStore'
-import { useUiStore } from '../stores/uiStore'
 import { normalizeSupportedDealType, toTradeTypeLabel } from '../utils/tradeType'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8081'
@@ -61,41 +60,10 @@ export const useApartmentTrade = (
     excludeOutliers,
   } = useTradeFilterStore()
 
-  const {
-    tradePeriod,
-    tradeCustomStartDate,
-    tradeCustomEndDate,
-  } = useUiStore()
-
-  const isCustomRangeValid =
-    tradePeriod !== 'custom' ||
-    (!!tradeCustomStartDate && !!tradeCustomEndDate && tradeCustomStartDate <= tradeCustomEndDate)
-
   const effectiveDealType = normalizeSupportedDealType(dealType)
 
-  const buildTradeParams = (includeExclusiveArea: boolean) => {
-    const params = new URLSearchParams({ period: tradePeriod })
-    if (priceRange) params.set('priceRange', priceRange)
-    if (effectiveDealType) params.set('dealType', effectiveDealType)
-    if (areaRange) params.set('areaRange', areaRange)
-    if (preset) params.set('preset', preset)
-    if (floorBand) params.set('floorBand', floorBand)
-    if (yearBand) params.set('yearBand', yearBand)
-    if (complexKeyword) params.set('complexKeyword', complexKeyword)
-    if (excludeOutliers) params.set('excludeOutliers', 'true')
-    if (tradePeriod === 'custom' && tradeCustomStartDate && tradeCustomEndDate) {
-      params.set('startDate', tradeCustomStartDate)
-      params.set('endDate', tradeCustomEndDate)
-    }
-    if (includeExclusiveArea && selectedArea != null) {
-      params.set('exclusiveArea', toAreaParam(selectedArea))
-    }
-
-    const query = params.toString()
-    return query ? `?${query}` : ''
-  }
-
-  const buildPriceHistoryParams = () => {
+  // 상세의 가격흐름/거래내역은 같은 최근 1년/전체 기준으로 조회한다.
+  const buildDetailRangeParams = () => {
     const params = new URLSearchParams({
       period: priceHistoryRange === 'all' ? 'all' : '12m',
     })
@@ -135,9 +103,8 @@ export const useApartmentTrade = (
       'apartment',
       'trades',
       aptId,
-      tradePeriod,
-      tradeCustomStartDate,
-      tradeCustomEndDate,
+      selectedArea,
+      priceHistoryRange,
       priceRange,
       dealType,
       areaRange,
@@ -148,7 +115,7 @@ export const useApartmentTrade = (
       excludeOutliers,
     ],
     queryFn: () =>
-      fetch(`${API_BASE_URL}/api/v1/apartments/${aptId}/trades${buildTradeParams(false)}`)
+      fetch(`${API_BASE_URL}/api/v1/apartments/${aptId}/trades${buildDetailRangeParams()}`)
         .then((r) => r.json())
         .then((data: ApiTrade[]) =>
           data.map((t) => ({
@@ -162,7 +129,7 @@ export const useApartmentTrade = (
             contractDate: t.contractDate ?? '-',
           }))
         ),
-    enabled: !!aptId && isCustomRangeValid,
+    enabled: !!aptId && selectedArea != null,
     staleTime: 1000 * 60 * 10,
   })
 
@@ -200,7 +167,7 @@ export const useApartmentTrade = (
       excludeOutliers,
     ],
     queryFn: () =>
-      fetch(`${API_BASE_URL}/api/v1/apartments/${aptId}/price-history${buildPriceHistoryParams()}`)
+      fetch(`${API_BASE_URL}/api/v1/apartments/${aptId}/price-history${buildDetailRangeParams()}`)
         .then((r) => r.json())
         .then((data: ApiPriceHistory[]) =>
           data.map((h) => ({

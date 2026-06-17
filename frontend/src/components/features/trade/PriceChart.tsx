@@ -16,6 +16,7 @@ type Props = {
 }
 
 type ChartMode = 'average' | 'trades' | 'pyeong'
+type MovingAverageWindow = 'off' | '3m' | '6m'
 
 type ChartPoint = {
   id: string
@@ -37,6 +38,12 @@ const MODE_OPTIONS: Array<{ value: ChartMode; label: string }> = [
 const RANGE_OPTIONS: Array<{ value: PriceHistoryRange; label: string }> = [
   { value: '1y', label: '최근 1년' },
   { value: 'all', label: '전체' },
+]
+
+const MOVING_AVERAGE_OPTIONS: Array<{ value: MovingAverageWindow; label: string; windowSize: number | null }> = [
+  { value: 'off', label: '이동평균 OFF', windowSize: null },
+  { value: '3m', label: '3개월', windowSize: 3 },
+  { value: '6m', label: '6개월', windowSize: 6 },
 ]
 
 const CHART_WIDTH = 340
@@ -67,6 +74,9 @@ const average = (values: number[]) => {
 
 const lineFrom = (points: ChartPoint[]) => points.map((point) => `${point.x},${point.y}`).join(' ')
 
+const getMovingAverageWindowSize = (value: MovingAverageWindow) =>
+  MOVING_AVERAGE_OPTIONS.find((option) => option.value === value)?.windowSize ?? null
+
 export const PriceChart = ({
   data,
   records,
@@ -78,11 +88,13 @@ export const PriceChart = ({
   onPriceHistoryRangeChange,
 }: Props) => {
   const [mode, setMode] = useState<ChartMode>('average')
+  const [movingAverageWindow, setMovingAverageWindow] = useState<MovingAverageWindow>('off')
   const [tooltip, setTooltip] = useState<Tooltip | null>(null)
   const targetType = tradeType === 'all' ? '매매' : tradeType
 
   const monthlyHistory = useMemo(
-    () => data.filter((item) => item.tradeType === targetType && item.avgPrice > 0).slice(-12),
+    // 전체 기간 보기에서는 API가 넘긴 모든 월을 그린다. 화면에서 임의로 12개월 제한하지 않는다.
+    () => data.filter((item) => item.tradeType === targetType && item.avgPrice > 0),
     [data, targetType],
   )
 
@@ -123,14 +135,57 @@ export const PriceChart = ({
   }, [filteredRecords, monthlyHistory])
 
   const values = useMemo(() => {
-    if (mode === 'average') return monthlyStats.map((point) => point.avgPrice)
-    if (mode === 'pyeong') {
-      return monthlyStats
-        .map((point) => point.avgPricePerPyeong)
-        .filter((value): value is number => value != null && value > 0)
-    }
-    return filteredRecords.map((record) => record.price)
-  }, [filteredRecords, mode, monthlyStats])
+    const baseValues =
+      mode === 'average'
+        ? monthlyStats.map((point) => point.avgPrice)
+        : mode === 'pyeong'
+          ? monthlyStats
+            .map((point) => point.avgPricePerPyeong)
+            .filter((value): value is number => value != null && value > 0)
+          : filteredRecords.map((record) => record.price)
+
+    const windowSize = getMovingAverageWindowSize(movingAverageWindow)
+    // 실거래 점 모드는 점 자체가 많아 이동평균선을 숨겨 시각적 혼잡을 줄인다.
+    if (mode === 'trades' || windowSize == null) return baseValues
+
+    // Y축 스케일이 이동평균선을 잘라내지 않도록 이동평균 값도 스케일 계산에 포함한다.
+    const movingAverageValues = monthlyStats
+      .map((point) => mode === 'pyeong' ? point.avgPricePerPyeong : point.avgPrice)
+      .map((value, index, source) => {
+        if (value == null || value <= 0 || index + 1 < windowSize) return null
+        const slice = source.slice(index + 1 - windowSize, index + 1)
+        if (slice.some((item) => item == null || item <= 0)) return null
+        return average(slice as number[])
+      })
+      .filter((value): value is number => value != null && value > 0)
+
+    return [...baseValues, ...movingAverageValues]
+  }, [filteredRecords, mode, monthlyStats, movingAverageWindow])
+
+  const movingAverageWindowSize = getMovingAverageWindowSize(movingAverageWindow)
+  const showMovingAverage = mode !== 'trades' && movingAverageWindowSize != null
+  const hasEnoughMovingAverageSamples = !showMovingAverage || monthlyStats.length >= movingAverageWindowSize
+
+  const movingAverageByMonth = useMemo(() => {
+    if (!showMovingAverage || movingAverageWindowSize == null) return new Map<string, number>()
+
+    const source = monthlyStats.map((point) => ({
+      month: point.month,
+      value: mode === 'pyeong' ? point.avgPricePerPyeong : point.avgPrice,
+    }))
+
+    const result = new Map<string, number>()
+    source.forEach((point, index) => {
+      if (point.value == null || point.value <= 0 || index + 1 < movingAverageWindowSize) return
+      const slice = source.slice(index + 1 - movingAverageWindowSize, index + 1).map((item) => item.value)
+      if (slice.some((value) => value == null || value <= 0)) return
+      result.set(point.month, average(slice as number[]) ?? 0)
+    })
+
+    return result
+  }, [mode, monthlyStats, movingAverageWindowSize, showMovingAverage])
+
+  const movingAverageLabel = movingAverageWindowSize == null ? '' : `${movingAverageWindowSize}개월 이동평균`
 
   const hasData = monthKeys.length > 0 && values.length > 0
 
@@ -146,6 +201,8 @@ export const PriceChart = ({
           targetType={targetType}
           priceHistoryRange={priceHistoryRange}
           onPriceHistoryRangeChange={onPriceHistoryRangeChange}
+          movingAverageWindow={movingAverageWindow}
+          onMovingAverageWindowChange={setMovingAverageWindow}
         />
         <div className="flex h-40 items-center justify-center">
           <span className="text-sm text-gray-400">선택한 조건의 차트 데이터가 없습니다</span>
@@ -173,16 +230,37 @@ export const PriceChart = ({
       const value = mode === 'pyeong' ? point.avgPricePerPyeong : point.avgPrice
       if (value == null || value <= 0) return null
 
+      const movingAverageValue = movingAverageByMonth.get(point.month)
       return {
         id: point.month,
         x: toX(index),
         y: toY(value),
         label: mode === 'pyeong' ? `${point.month} 평균 평당가` : `${point.month} 월평균`,
         value,
-        subLabel: `${point.transactionCount}건`,
+        subLabel: [
+          `${point.transactionCount}건`,
+          movingAverageValue != null ? `${movingAverageLabel} ${formatPrice(movingAverageValue)}` : null,
+        ].filter(Boolean).join(' · '),
       }
     })
     .filter((point): point is ChartPoint => point != null)
+
+  const movingAveragePoints: ChartPoint[] =
+    showMovingAverage && hasEnoughMovingAverageSamples
+      ? monthlyStats
+        .map((point, index): ChartPoint | null => {
+          const value = movingAverageByMonth.get(point.month)
+          if (value == null || value <= 0) return null
+          return {
+            id: `ma-${point.month}`,
+            x: toX(index),
+            y: toY(value),
+            label: `${point.month} ${movingAverageLabel}`,
+            value,
+          }
+        })
+        .filter((point): point is ChartPoint => point != null)
+      : []
 
   const tradeGroups = new Map<string, TradeRecord[]>()
   filteredRecords.forEach((record) => {
@@ -210,6 +288,7 @@ export const PriceChart = ({
 
   const points = mode === 'trades' ? tradePoints : monthlyPoints
   const linePoints = mode === 'trades' ? '' : lineFrom(points)
+  const movingAverageLinePoints = lineFrom(movingAveragePoints)
   const fillPoints =
     mode === 'trades' || points.length < 2
       ? ''
@@ -225,6 +304,7 @@ export const PriceChart = ({
 
   const strokeColor = mode === 'pyeong' ? '#059669' : '#2563eb'
   const pointColor = mode === 'trades' ? '#334155' : strokeColor
+  const movingAverageColor = '#f59e0b'
 
   return (
     <div className="mx-4 my-3 rounded-xl bg-white p-4 shadow-sm">
@@ -237,6 +317,8 @@ export const PriceChart = ({
         targetType={targetType}
         priceHistoryRange={priceHistoryRange}
         onPriceHistoryRangeChange={onPriceHistoryRangeChange}
+        movingAverageWindow={movingAverageWindow}
+        onMovingAverageWindowChange={setMovingAverageWindow}
       />
 
       <div className="relative h-56">
@@ -281,6 +363,18 @@ export const PriceChart = ({
             />
           )}
 
+          {movingAverageLinePoints && movingAveragePoints.length >= 2 && (
+            <polyline
+              points={movingAverageLinePoints}
+              fill="none"
+              stroke={movingAverageColor}
+              strokeWidth="2"
+              strokeDasharray="5 4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+
           {points.map((point) => (
             <circle
               key={point.id}
@@ -291,6 +385,20 @@ export const PriceChart = ({
               fillOpacity={mode === 'trades' ? 0.72 : 1}
               stroke={pointColor}
               strokeWidth={mode === 'trades' ? 1 : 2}
+              className="cursor-pointer"
+              onMouseEnter={() => setTooltip(point)}
+            />
+          ))}
+
+          {movingAveragePoints.map((point) => (
+            <circle
+              key={point.id}
+              cx={point.x}
+              cy={point.y}
+              r={3}
+              fill="white"
+              stroke={movingAverageColor}
+              strokeWidth="1.5"
               className="cursor-pointer"
               onMouseEnter={() => setTooltip(point)}
             />
@@ -314,6 +422,17 @@ export const PriceChart = ({
           </div>
         )}
       </div>
+
+      {showMovingAverage && (
+        <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-500">
+          <span className="h-0.5 w-5 rounded-full bg-amber-500" />
+          <span>
+            {hasEnoughMovingAverageSamples
+              ? `${movingAverageLabel} 표시 중`
+              : `${movingAverageLabel}을 표시하기에는 표본이 부족합니다`}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -327,6 +446,8 @@ type ChartHeaderProps = {
   targetType: Exclude<TradeType, 'all'>
   priceHistoryRange: PriceHistoryRange
   onPriceHistoryRangeChange: (range: PriceHistoryRange) => void
+  movingAverageWindow: MovingAverageWindow
+  onMovingAverageWindowChange: (window: MovingAverageWindow) => void
 }
 
 const ChartHeader = ({
@@ -338,39 +459,61 @@ const ChartHeader = ({
   targetType,
   priceHistoryRange,
   onPriceHistoryRangeChange,
+  movingAverageWindow,
+  onMovingAverageWindowChange,
 }: ChartHeaderProps) => (
   <div className="mb-3">
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <div className="mb-2 flex items-center justify-between gap-2">
       <p className="text-sm font-semibold text-gray-700">가격 흐름 ({targetType})</p>
-      <div className="flex min-w-0 flex-wrap justify-end gap-2">
-        <div className="flex shrink-0 rounded-lg bg-gray-100 p-1">
-          {RANGE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onPriceHistoryRangeChange(option.value)}
-              className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
-                priceHistoryRange === option.value ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-700'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex shrink-0 rounded-lg bg-gray-100 p-1">
-          {MODE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onModeChange(option.value)}
-              className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
-                mode === option.value ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-700'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex shrink-0 rounded-lg bg-gray-100 p-1">
+        {RANGE_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onPriceHistoryRangeChange(option.value)}
+            className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
+              priceHistoryRange === option.value ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-700'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <div className="mb-3 flex flex-wrap justify-end gap-2">
+      <div className="flex shrink-0 rounded-lg bg-gray-100 p-1">
+        {MODE_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onModeChange(option.value)}
+            className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
+              mode === option.value ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-700'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex shrink-0 rounded-lg bg-gray-100 p-1">
+        {MOVING_AVERAGE_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onMovingAverageWindowChange(option.value)}
+            disabled={mode === 'trades' && option.value !== 'off'}
+            className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
+              movingAverageWindow === option.value
+                ? 'bg-white text-amber-600 shadow-sm'
+                : mode === 'trades' && option.value !== 'off'
+                  ? 'cursor-not-allowed text-gray-300'
+                  : 'text-gray-400 hover:text-gray-700'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
     </div>
 

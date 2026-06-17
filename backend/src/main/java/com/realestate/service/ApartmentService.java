@@ -88,6 +88,7 @@ public class ApartmentService {
     @Transactional(readOnly = true)
     public List<TradeRecordDto> getTradeRecords(
             Long id,
+            BigDecimal exclusiveArea,
             String period,
             String priceRange,
             String dealType,
@@ -122,6 +123,7 @@ public class ApartmentService {
                         criteria.startDate(),
                         criteria.endDate(),
                         criteria.tradeType(),
+                        exclusiveArea,
                         criteria.minPrice(),
                         criteria.maxPrice(),
                         criteria.minArea(),

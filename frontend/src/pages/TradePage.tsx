@@ -106,6 +106,7 @@ export const TradePage = () => {
   }, [filtered.length, isFetching, setResultCount])
 
   useEffect(() => {
+    // URL 공유/직접 진입 시 query를 store로 1회 복원한다.
     const aptIdParam = searchParams.get('aptId')
     const priceRangeParam = searchParams.get('priceRange') as 'UNDER_10' | '10_20' | 'OVER_20' | null
     const rawDealTypeParam = searchParams.get('dealType') as 'SALE' | 'JEONSE' | 'MONTHLY' | null
@@ -139,6 +140,7 @@ export const TradePage = () => {
   }, [])
 
   useEffect(() => {
+    // store가 바뀌면 URL을 갱신해 필터 상태를 공유 가능하게 유지한다.
     const next = new URLSearchParams()
     next.set('period', tradePeriod)
     if (aptId) next.set('aptId', aptId)

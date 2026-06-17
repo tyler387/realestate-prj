@@ -3,6 +3,7 @@ export type TradeType = 'all' | '매매' | '전세' | '월세'
 const TYPES: { value: TradeType; label: string; disabled?: boolean; badge?: string }[] = [
   { value: 'all', label: '전체' },
   { value: '매매', label: '매매' },
+  // 현재 수집기는 매매 전용이므로 전월세는 선택 대신 준비 상태만 노출한다.
   { value: '전세', label: '전세', disabled: true, badge: '준비중' },
   { value: '월세', label: '월세', disabled: true, badge: '준비중' },
 ]

@@ -51,6 +51,7 @@ public class ApartmentController {
     @GetMapping("/{id}/trades")
     public List<TradeRecordDto> getTrades(
             @PathVariable Long id,
+            @RequestParam(required = false) BigDecimal exclusiveArea,
             @RequestParam(defaultValue = "1m") String period,
             @RequestParam(required = false) String priceRange,
             @RequestParam(required = false) String dealType,
@@ -65,6 +66,7 @@ public class ApartmentController {
     ) {
         return apartmentService.getTradeRecords(
                 id,
+                exclusiveArea,
                 period,
                 priceRange,
                 dealType,

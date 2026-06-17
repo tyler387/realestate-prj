@@ -56,7 +56,7 @@ export const MobileTradeFilterDrawer = ({ isOpen, onClose }: Props) => {
 
         <div className="modern-scroll flex-1 overflow-y-auto px-4 py-4">
           <PriceTrendSummary />
-          <QuickFilters />
+          <QuickFilters mode="draft" onApplied={onClose} />
         </div>
       </section>
     </div>
