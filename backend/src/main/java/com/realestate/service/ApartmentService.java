@@ -320,8 +320,8 @@ public class ApartmentService {
         if (dealType == null || dealType.isBlank()) return null;
         return switch (dealType) {
             case "SALE" -> "SALE";
-            case "JEONSE", "LEASE" -> "LEASE";
-            case "MONTHLY" -> "MONTHLY";
+            // Rent data is not collected yet; keep direct API calls aligned with frontend fallback UX.
+            case "JEONSE", "LEASE", "MONTHLY" -> "SALE";
             default -> null;
         };
     }

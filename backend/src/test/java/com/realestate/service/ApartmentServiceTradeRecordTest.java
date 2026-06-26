@@ -10,6 +10,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.IntStream;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -125,6 +127,50 @@ class ApartmentServiceTradeRecordTest {
         assertThat(result.displayedCount()).isEqualTo(2);
         assertThat(result.limit()).isEqualTo(500);
         assertThat(result.hasMore()).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"JEONSE", "LEASE", "MONTHLY"})
+    void getTradeRecords_normalizesUnsupportedRentDealTypesToSale(String dealType) {
+        when(apartmentRepository.findById(1L)).thenReturn(Optional.of(apartment()));
+        when(realTradeRepository.findRecentByApartmentIdWithFilters(
+                eq(1L),
+                any(LocalDate.class),
+                any(LocalDate.class),
+                eq("SALE"),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                eq(false),
+                eq(false),
+                isNull(),
+                eq(false),
+                eq(501)
+        )).thenReturn(projections(1));
+
+        TradeRecordResponseDto result = apartmentService.getTradeRecords(
+                1L,
+                null,
+                "12m",
+                null,
+                dealType,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false
+        );
+
+        assertThat(result.records()).hasSize(1);
     }
 
     private Apartment apartment() {

@@ -239,8 +239,8 @@ public class TradeStatsService {
         if (dealType == null || dealType.isBlank()) return "SALE";
         return switch (dealType) {
             case "SALE" -> "SALE";
-            case "JEONSE", "LEASE" -> "LEASE";
-            case "MONTHLY" -> "MONTHLY";
+            // Rent data is not collected yet; keep direct API calls aligned with frontend fallback UX.
+            case "JEONSE", "LEASE", "MONTHLY" -> "SALE";
             default -> "SALE";
         };
     }
