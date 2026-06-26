@@ -27,6 +27,7 @@ public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+    private final AdminApiKeyFilter adminApiKeyFilter;
 
     @Value("${cors.allowed-origins:http://localhost:5173}")
     private String allowedOrigins;
@@ -59,14 +60,15 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/community/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/community/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/community/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, e) ->
                                 res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
                 )
+                .addFilterBefore(adminApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

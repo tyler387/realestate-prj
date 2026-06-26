@@ -33,7 +33,9 @@ export const ApartmentTradePage = () => {
   )
 
   const apartment = summaryQuery.data
-  const records = tradesQuery.data ?? []
+  const records = tradesQuery.data?.records ?? []
+  const tradeRecordLimit = tradesQuery.data?.limit
+  const hasMoreTradeRecords = tradesQuery.data?.hasMore ?? false
   const areaOptions = tradeAreasQuery.data ?? []
   const priceHistory = priceHistoryQuery.data ?? []
   const effectiveDealType = normalizeSupportedDealType(dealType)
@@ -111,9 +113,17 @@ export const ApartmentTradePage = () => {
         onAreaChange={setSelectedArea}
         priceHistoryRange={priceHistoryRange}
         onPriceHistoryRangeChange={setPriceHistoryRange}
+        isTradeRecordLimited={hasMoreTradeRecords}
+        tradeRecordLimit={tradeRecordLimit}
       />
       <p className="px-4 py-2 text-sm font-semibold text-gray-700">{tradeHistoryTitle}</p>
-      <TradeHistoryList records={records} selectedType={selectedType} selectedArea={selectedArea} />
+      <TradeHistoryList
+        records={records}
+        selectedType={selectedType}
+        selectedArea={selectedArea}
+        limit={tradeRecordLimit}
+        hasMore={hasMoreTradeRecords}
+      />
     </div>
   )
 }

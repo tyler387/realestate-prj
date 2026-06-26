@@ -2,9 +2,13 @@ package com.realestate.web.controller;
 
 import com.realestate.collect.ApartmentComplexCollector;
 import com.realestate.collect.RealTradeCollector;
+import com.realestate.service.AdminCollectionJobService;
+import com.realestate.web.dto.AdminJobStatusDto;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +35,7 @@ public class AdminCollectController {
 
     private final RealTradeCollector realTradeCollector;
     private final ApartmentComplexCollector apartmentComplexCollector;
+    private final AdminCollectionJobService adminCollectionJobService;
 
     // -----------------------------------------------------------------------
     // 거래 데이터 수집 (real_trade 테이블)
@@ -45,10 +50,12 @@ public class AdminCollectController {
      *     POST /api/v1/admin/collect?months=6
      */
     @PostMapping("/collect")
-    public ResponseEntity<Void> collect(@RequestParam(defaultValue = "12") int months) {
+    public ResponseEntity<AdminJobStatusDto> collect(@RequestParam(defaultValue = "12") int months) {
         if (months < 1 || months > 12) return ResponseEntity.badRequest().build();
-        CompletableFuture.runAsync(() -> realTradeCollector.collectAllDistricts(months));
-        return ResponseEntity.accepted().build();
+        return startAsyncJob(
+                "TRADE_ALL:" + months + "m",
+                () -> realTradeCollector.collectAllDistricts(months)
+        );
     }
 
     /**
@@ -59,15 +66,15 @@ public class AdminCollectController {
      * 예) POST /api/v1/admin/collect/11710?months=6
      */
     @PostMapping("/collect/{lawdCd}")
-    public ResponseEntity<Map<String, Integer>> collectDistrict(
+    public ResponseEntity<?> collectDistrict(
             @PathVariable String lawdCd,
             @RequestParam(defaultValue = "3") int months) {
 
         if (months < 1 || months > 12) {
             return ResponseEntity.badRequest().build();
         }
-        Map<String, Integer> stats = realTradeCollector.collectDistrict(lawdCd, months);
-        return ResponseEntity.ok(stats);
+        return runExclusiveJob("TRADE_DISTRICT:" + lawdCd + ":" + months + "m",
+                () -> realTradeCollector.collectDistrict(lawdCd, months));
     }
 
     // -----------------------------------------------------------------------
@@ -81,9 +88,9 @@ public class AdminCollectController {
      * 예) POST /api/v1/admin/complexes/11650
      */
     @PostMapping("/complexes/{sigunguCd}")
-    public ResponseEntity<Map<String, Integer>> collectComplexes(@PathVariable String sigunguCd) {
-        Map<String, Integer> stats = apartmentComplexCollector.collectComplexes(sigunguCd);
-        return ResponseEntity.ok(stats);
+    public ResponseEntity<?> collectComplexes(@PathVariable String sigunguCd) {
+        return runExclusiveJob("COMPLEX_DISTRICT:" + sigunguCd,
+                () -> apartmentComplexCollector.collectComplexes(sigunguCd));
     }
 
     /**
@@ -93,12 +100,12 @@ public class AdminCollectController {
      * 예) POST /api/v1/admin/complexes/all
      */
     @PostMapping("/complexes/all")
-    public ResponseEntity<Void> collectAllComplexes() {
-        CompletableFuture.runAsync(() ->
-            apartmentComplexCollector.getSupportedSigunguCodes()
-                .forEach(apartmentComplexCollector::collectComplexes)
+    public ResponseEntity<AdminJobStatusDto> collectAllComplexes() {
+        return startAsyncJob(
+                "COMPLEX_ALL",
+                () -> apartmentComplexCollector.getSupportedSigunguCodes()
+                        .forEach(apartmentComplexCollector::collectComplexes)
         );
-        return ResponseEntity.accepted().build();
     }
 
     /**
@@ -107,9 +114,28 @@ public class AdminCollectController {
      * 예) POST /api/v1/admin/complexes/backfill-household
      */
     @PostMapping("/complexes/backfill-household")
-    public ResponseEntity<Map<String, Integer>> backfillHouseholdCount() {
-        int updated = apartmentComplexCollector.backfillHouseholdCount();
-        return ResponseEntity.ok(Map.of("updated", updated));
+    public ResponseEntity<?> backfillHouseholdCount() {
+        return runExclusiveJob("COMPLEX_BACKFILL_HOUSEHOLD",
+                () -> Map.of("updated", apartmentComplexCollector.backfillHouseholdCount()));
+    }
+
+    @GetMapping("/jobs")
+    public List<AdminJobStatusDto> jobs() {
+        return adminCollectionJobService.getRecentJobs();
+    }
+
+    @GetMapping("/jobs/current")
+    public ResponseEntity<AdminJobStatusDto> currentJob() {
+        return adminCollectionJobService.getRunningJob()
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    @GetMapping("/jobs/{jobId}")
+    public ResponseEntity<AdminJobStatusDto> job(@PathVariable String jobId) {
+        return adminCollectionJobService.getJob(jobId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     // -----------------------------------------------------------------------
@@ -137,5 +163,36 @@ public class AdminCollectController {
         String result = apartmentComplexCollector.testApiAccess(sigunguCd);
         String status = result.startsWith("OK") ? "success" : "error";
         return ResponseEntity.ok(Map.of("status", status, "message", result));
+    }
+
+    private ResponseEntity<AdminJobStatusDto> startAsyncJob(String type, Runnable task) {
+        Optional<AdminJobStatusDto> started = adminCollectionJobService.startAsync(type, task);
+        return started
+                .map(job -> ResponseEntity.status(HttpStatus.ACCEPTED).body(job))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(adminCollectionJobService.getRunningJob().orElse(null)));
+    }
+
+    private ResponseEntity<?> runExclusiveJob(String type, JobAction action) {
+        Optional<AdminCollectionJobService.JobHandle> handle = adminCollectionJobService.begin(type);
+        if (handle.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(adminCollectionJobService.getRunningJob().orElse(null));
+        }
+
+        AdminCollectionJobService.JobHandle job = handle.get();
+        try {
+            Map<String, Integer> result = action.run();
+            job.markSucceeded();
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException | Error ex) {
+            job.markFailed(ex);
+            throw ex;
+        }
+    }
+
+    @FunctionalInterface
+    private interface JobAction {
+        Map<String, Integer> run();
     }
 }

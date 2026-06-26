@@ -39,6 +39,20 @@ type ApiTradeAreaOption = {
   transactionCount: number | null
 }
 
+type ApiTradeResponse = {
+  records: ApiTrade[]
+  displayedCount: number
+  limit: number
+  hasMore: boolean
+}
+
+export type TradeRecordResult = {
+  records: TradeRecord[]
+  displayedCount: number
+  limit: number
+  hasMore: boolean
+}
+
 const toAreaParam = (area: number) => {
   const fixed = area.toFixed(4)
   return fixed.replace(/\.?0+$/, '')
@@ -98,7 +112,7 @@ export const useApartmentTrade = (
     staleTime: 1000 * 60 * 60,
   })
 
-  const tradesQuery = useQuery<TradeRecord[]>({
+  const tradesQuery = useQuery<TradeRecordResult>({
     queryKey: [
       'apartment',
       'trades',
@@ -117,8 +131,8 @@ export const useApartmentTrade = (
     queryFn: () =>
       fetch(`${API_BASE_URL}/api/v1/apartments/${aptId}/trades${buildDetailRangeParams()}`)
         .then((r) => r.json())
-        .then((data: ApiTrade[]) =>
-          data.map((t) => ({
+        .then((data: ApiTradeResponse) => ({
+          records: data.records.map((t) => ({
             id: t.id,
             apartmentId: aptId,
             floor: t.floor != null ? String(t.floor) : '-',
@@ -127,9 +141,12 @@ export const useApartmentTrade = (
             price: t.tradeAmount ?? 0,
             pricePerPyeong: t.pricePerPyeong,
             contractDate: t.contractDate ?? '-',
-          }))
-        ),
-    enabled: !!aptId && selectedArea != null,
+          })),
+          displayedCount: data.displayedCount,
+          limit: data.limit,
+          hasMore: data.hasMore,
+        })),
+    enabled: !!aptId,
     staleTime: 1000 * 60 * 10,
   })
 
@@ -178,7 +195,7 @@ export const useApartmentTrade = (
             tradeType: toTradeTypeLabel(h.tradeType),
           }))
         ),
-    enabled: !!aptId && selectedArea != null,
+    enabled: !!aptId,
     staleTime: 1000 * 60 * 10,
   })
 

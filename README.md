@@ -48,6 +48,10 @@ KAKAO_REST_API_KEY=...
 DB_URL=jdbc:postgresql://db.<your-project-ref>.supabase.co:5432/postgres?sslmode=require
 DB_USERNAME=postgres
 DB_PASSWORD=...
+ADMIN_API_KEY=...
+JWT_SECRET=...
+PASSWORD_RESET_TOKEN_PEPPER=...
+FLYWAY_VALIDATE_ON_MIGRATE=true
 VITE_KAKAO_MAP_KEY=...
 VITE_API_BASE_URL=http://localhost:8081
 ```
@@ -78,7 +82,22 @@ Render can build from `backend/Dockerfile`. Set environment variables in Render:
 - `DB_PASSWORD=<supabase-db-password>`
 - `PUBLIC_DATA_API_KEY=...`
 - `KAKAO_REST_API_KEY=...`
+- `ADMIN_API_KEY=...`
+- `JWT_SECRET=...`
+- `PASSWORD_RESET_TOKEN_PEPPER=...`
+- `FLYWAY_VALIDATE_ON_MIGRATE=true`
 - `PORT` is provided by Render automatically (Spring reads it via `server.port=${PORT:8081}`)
+
+## Admin Collection Safety
+
+Admin endpoints under `/api/v1/admin/**` require `X-Admin-Api-Key`.
+Long-running collection endpoints use a single in-memory job lock and status API:
+
+- `POST /api/v1/admin/collect`
+- `POST /api/v1/admin/complexes/all`
+- `GET /api/v1/admin/jobs`
+- `GET /api/v1/admin/jobs/current`
+- `GET /api/v1/admin/jobs/{jobId}`
 
 ## Java Version Policy
 

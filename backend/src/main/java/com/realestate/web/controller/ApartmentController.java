@@ -6,7 +6,7 @@ import com.realestate.web.dto.ApartmentSearchDto;
 import com.realestate.web.dto.ApartmentSummaryDto;
 import com.realestate.web.dto.PriceHistoryDto;
 import com.realestate.web.dto.TradeAreaOptionDto;
-import com.realestate.web.dto.TradeRecordDto;
+import com.realestate.web.dto.TradeRecordResponseDto;
 import java.math.BigDecimal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -49,7 +49,7 @@ public class ApartmentController {
     }
 
     @GetMapping("/{id}/trades")
-    public List<TradeRecordDto> getTrades(
+    public TradeRecordResponseDto getTrades(
             @PathVariable Long id,
             @RequestParam(required = false) BigDecimal exclusiveArea,
             @RequestParam(defaultValue = "1m") String period,

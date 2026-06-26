@@ -54,6 +54,7 @@ public interface RealTradeRepository extends JpaRepository<RealTrade, Long> {
               AND (:complexKeyword IS NULL OR TRIM(:complexKeyword) = '' OR a.complex_name ILIKE CONCAT('%', :complexKeyword, '%'))
               AND (:excludeOutliers = false OR (r.price_per_pyeong IS NOT NULL AND r.price_per_pyeong > 0))
             ORDER BY r.trade_date DESC, r.id DESC
+            LIMIT :limit
             """, nativeQuery = true)
     List<TradeRecordProjection> findRecentByApartmentIdWithFilters(
             @Param("aptId") Long aptId,
@@ -72,7 +73,8 @@ public interface RealTradeRepository extends JpaRepository<RealTrade, Long> {
             @Param("onlyNew") boolean onlyNew,
             @Param("onlyLarge") boolean onlyLarge,
             @Param("complexKeyword") String complexKeyword,
-            @Param("excludeOutliers") boolean excludeOutliers
+            @Param("excludeOutliers") boolean excludeOutliers,
+            @Param("limit") int limit
     );
 
     @Query(value = """

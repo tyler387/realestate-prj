@@ -10,6 +10,7 @@ import com.realestate.web.dto.ApartmentSummaryDto;
 import com.realestate.web.dto.PriceHistoryDto;
 import com.realestate.web.dto.TradeAreaOptionDto;
 import com.realestate.web.dto.TradeRecordDto;
+import com.realestate.web.dto.TradeRecordResponseDto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -22,6 +23,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @RequiredArgsConstructor
 public class ApartmentService {
+
+    private static final int TRADE_RECORD_LIMIT = 500;
 
     private final ApartmentRepository apartmentRepository;
     private final RealTradeRepository realTradeRepository;
@@ -86,7 +89,7 @@ public class ApartmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<TradeRecordDto> getTradeRecords(
+    public TradeRecordResponseDto getTradeRecords(
             Long id,
             BigDecimal exclusiveArea,
             String period,
@@ -118,7 +121,7 @@ public class ApartmentService {
                 excludeOutliers
         );
 
-        return realTradeRepository.findRecentByApartmentIdWithFilters(
+        var projections = realTradeRepository.findRecentByApartmentIdWithFilters(
                         id,
                         criteria.startDate(),
                         criteria.endDate(),
@@ -135,8 +138,13 @@ public class ApartmentService {
                         criteria.onlyNew(),
                         criteria.onlyLarge(),
                         criteria.complexKeyword(),
-                        criteria.excludeOutliers()
-                )
+                        criteria.excludeOutliers(),
+                        TRADE_RECORD_LIMIT + 1
+                );
+
+        boolean hasMore = projections.size() > TRADE_RECORD_LIMIT;
+        var visibleProjections = hasMore ? projections.subList(0, TRADE_RECORD_LIMIT) : projections;
+        List<TradeRecordDto> records = visibleProjections
                 .stream()
                 .map(p -> new TradeRecordDto(
                         p.getId(),
@@ -148,6 +156,8 @@ public class ApartmentService {
                         p.getPricePerPyeong()
                 ))
                 .toList();
+
+        return new TradeRecordResponseDto(records, records.size(), TRADE_RECORD_LIMIT, hasMore);
     }
 
     @Transactional(readOnly = true)
