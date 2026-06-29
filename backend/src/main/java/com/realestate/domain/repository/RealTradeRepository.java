@@ -15,6 +15,8 @@ public interface RealTradeRepository extends JpaRepository<RealTrade, Long> {
                 r.exclusive_area AS area,
                 r.trade_type AS tradeType,
                 r.trade_amount AS tradeAmount,
+                r.deposit_amount AS depositAmount,
+                r.monthly_rent_amount AS monthlyRentAmount,
                 TO_CHAR(r.trade_date, 'YYYY.MM.DD') AS contractDate,
                 r.price_per_pyeong AS pricePerPyeong
             FROM real_trade r
@@ -32,6 +34,8 @@ public interface RealTradeRepository extends JpaRepository<RealTrade, Long> {
                 r.exclusive_area AS area,
                 r.trade_type AS tradeType,
                 r.trade_amount AS tradeAmount,
+                r.deposit_amount AS depositAmount,
+                r.monthly_rent_amount AS monthlyRentAmount,
                 TO_CHAR(r.trade_date, 'YYYY.MM.DD') AS contractDate,
                 r.price_per_pyeong AS pricePerPyeong
             FROM real_trade r

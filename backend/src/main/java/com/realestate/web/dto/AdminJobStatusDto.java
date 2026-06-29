@@ -8,6 +8,12 @@ public record AdminJobStatusDto(
         String status,
         LocalDateTime startedAt,
         LocalDateTime finishedAt,
-        String errorMessage
+        String errorMessage,
+        String progressMessage,
+        Integer totalCount,
+        Integer processedCount,
+        Integer savedCount,
+        Integer skippedCount,
+        Integer duplicateCount
 ) {
 }

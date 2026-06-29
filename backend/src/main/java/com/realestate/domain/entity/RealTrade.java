@@ -52,6 +52,12 @@ public class RealTrade {
     @Column(name = "trade_amount")
     private Long tradeAmount;
 
+    @Column(name = "deposit_amount")
+    private Long depositAmount;
+
+    @Column(name = "monthly_rent_amount")
+    private Long monthlyRentAmount;
+
     @Column(name = "floor")
     private Integer floor;
 
@@ -72,6 +78,8 @@ public class RealTrade {
             Integer tradeMonth,
             BigDecimal exclusiveArea,
             Long tradeAmount,
+            Long depositAmount,
+            Long monthlyRentAmount,
             Integer floor,
             Boolean isCancelled
     ) {
@@ -82,6 +90,8 @@ public class RealTrade {
         this.tradeMonth = tradeMonth;
         this.exclusiveArea = exclusiveArea;
         this.tradeAmount = tradeAmount;
+        this.depositAmount = depositAmount;
+        this.monthlyRentAmount = monthlyRentAmount;
         this.floor = floor;
         this.isCancelled = isCancelled;
     }
@@ -105,6 +115,35 @@ public class RealTrade {
                 tradeMonth,
                 exclusiveArea,
                 tradeAmount,
+                null,
+                null,
+                floor,
+                isCancelled
+        );
+    }
+
+    public static RealTrade createRent(
+            Apartment apartment,
+            TradeType tradeType,
+            LocalDate tradeDate,
+            Integer tradeYear,
+            Integer tradeMonth,
+            BigDecimal exclusiveArea,
+            Long depositAmount,
+            Long monthlyRentAmount,
+            Integer floor,
+            Boolean isCancelled
+    ) {
+        return new RealTrade(
+                apartment,
+                tradeType,
+                tradeDate,
+                tradeYear,
+                tradeMonth,
+                exclusiveArea,
+                depositAmount,
+                depositAmount,
+                monthlyRentAmount,
                 floor,
                 isCancelled
         );
@@ -115,6 +154,10 @@ public class RealTrade {
         this.createdAt = LocalDateTime.now();
         if (this.isCancelled == null) {
             this.isCancelled = false;
+        }
+        if (this.tradeType == TradeType.MONTHLY) {
+            this.pricePerPyeong = null;
+            return;
         }
         if (this.tradeAmount == null || this.exclusiveArea == null || this.exclusiveArea.compareTo(BigDecimal.ZERO) <= 0) {
             this.pricePerPyeong = null;

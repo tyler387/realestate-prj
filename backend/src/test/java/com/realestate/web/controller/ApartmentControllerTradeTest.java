@@ -1,5 +1,12 @@
 package com.realestate.web.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.realestate.auth.AuthRateLimitService;
 import com.realestate.service.ApartmentService;
 import com.realestate.web.dto.TradeRecordDto;
@@ -12,13 +19,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = ApartmentController.class)
 @Import(TestSecurityConfig.class)
@@ -38,8 +38,10 @@ class ApartmentControllerTradeTest {
                 10L,
                 12,
                 new BigDecimal("84.99"),
-                "매매",
+                "\uB9E4\uB9E4",
                 150_000L,
+                null,
+                null,
                 "2026.06.01",
                 5_800L
         );
@@ -66,7 +68,7 @@ class ApartmentControllerTradeTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.records").isArray())
                 .andExpect(jsonPath("$.records[0].id").value(10))
-                .andExpect(jsonPath("$.records[0].tradeType").value("매매"))
+                .andExpect(jsonPath("$.records[0].tradeType").value("\uB9E4\uB9E4"))
                 .andExpect(jsonPath("$.displayedCount").value(1))
                 .andExpect(jsonPath("$.limit").value(500))
                 .andExpect(jsonPath("$.hasMore").value(false));

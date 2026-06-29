@@ -29,8 +29,6 @@ type ChartPoint = {
   subLabel?: string
 }
 
-type Tooltip = ChartPoint
-
 const MODE_OPTIONS: Array<{ value: ChartMode; label: string }> = [
   { value: 'average', label: '평균가' },
   { value: 'trades', label: '실거래가' },
@@ -67,7 +65,7 @@ const formatArea = (area: number) => {
   return fixed.replace(/\.?0+$/, '')
 }
 
-const formatPyeong = (area: number) => `${Math.round((area * 0.3025) / 0.75)}평형`
+const formatPyeong = (area: number) => `${Math.max(1, Math.round((area * 0.3025) / 0.75))}평형`
 
 const average = (values: number[]) => {
   if (values.length === 0) return null
@@ -93,12 +91,11 @@ export const PriceChart = ({
 }: Props) => {
   const [mode, setMode] = useState<ChartMode>('average')
   const [movingAverageWindow, setMovingAverageWindow] = useState<MovingAverageWindow>('off')
-  const [tooltip, setTooltip] = useState<Tooltip | null>(null)
+  const [tooltip, setTooltip] = useState<ChartPoint | null>(null)
   const targetType = tradeType === 'all' ? '매매' : tradeType
   const effectiveMode = isTradeRecordLimited && mode === 'trades' ? 'average' : mode
 
   const monthlyHistory = useMemo(
-    // 전체 기간 보기에서는 API가 넘긴 모든 월을 그린다. 화면에서 임의로 12개월 제한하지 않는다.
     () => data.filter((item) => item.tradeType === targetType && item.avgPrice > 0),
     [data, targetType],
   )
@@ -117,24 +114,20 @@ export const PriceChart = ({
     [monthKeys, records, selectedArea, targetType],
   )
 
-  const monthlyStats = monthlyHistory
-
   const values = useMemo(() => {
     const baseValues =
       effectiveMode === 'average'
-        ? monthlyStats.map((point) => point.avgPrice)
+        ? monthlyHistory.map((point) => point.avgPrice)
         : effectiveMode === 'pyeong'
-          ? monthlyStats
+          ? monthlyHistory
             .map((point) => point.avgPricePerPyeong)
             .filter((value): value is number => value != null && value > 0)
           : filteredRecords.map((record) => record.price)
 
     const windowSize = getMovingAverageWindowSize(movingAverageWindow)
-    // 실거래 점 모드는 점 자체가 많아 이동평균선을 숨겨 시각적 혼잡을 줄인다.
     if (effectiveMode === 'trades' || windowSize == null) return baseValues
 
-    // Y축 스케일이 이동평균선을 잘라내지 않도록 이동평균 값도 스케일 계산에 포함한다.
-    const movingAverageValues = monthlyStats
+    const movingAverageValues = monthlyHistory
       .map((point) => effectiveMode === 'pyeong' ? point.avgPricePerPyeong : point.avgPrice)
       .map((value, index, source) => {
         if (value == null || value <= 0 || index + 1 < windowSize) return null
@@ -145,16 +138,16 @@ export const PriceChart = ({
       .filter((value): value is number => value != null && value > 0)
 
     return [...baseValues, ...movingAverageValues]
-  }, [effectiveMode, filteredRecords, monthlyStats, movingAverageWindow])
+  }, [effectiveMode, filteredRecords, monthlyHistory, movingAverageWindow])
 
   const movingAverageWindowSize = getMovingAverageWindowSize(movingAverageWindow)
   const showMovingAverage = effectiveMode !== 'trades' && movingAverageWindowSize != null
-  const hasEnoughMovingAverageSamples = !showMovingAverage || monthlyStats.length >= movingAverageWindowSize
+  const hasEnoughMovingAverageSamples = !showMovingAverage || monthlyHistory.length >= movingAverageWindowSize
 
   const movingAverageByMonth = useMemo(() => {
     if (!showMovingAverage || movingAverageWindowSize == null) return new Map<string, number>()
 
-    const source = monthlyStats.map((point) => ({
+    const source = monthlyHistory.map((point) => ({
       month: point.month,
       value: effectiveMode === 'pyeong' ? point.avgPricePerPyeong : point.avgPrice,
     }))
@@ -168,10 +161,9 @@ export const PriceChart = ({
     })
 
     return result
-  }, [effectiveMode, monthlyStats, movingAverageWindowSize, showMovingAverage])
+  }, [effectiveMode, monthlyHistory, movingAverageWindowSize, showMovingAverage])
 
   const movingAverageLabel = movingAverageWindowSize == null ? '' : `${movingAverageWindowSize}개월 이동평균`
-
   const hasData = monthKeys.length > 0 && values.length > 0
 
   if (!hasData) {
@@ -211,7 +203,7 @@ export const PriceChart = ({
   const toX = (index: number) => PADDING.left + (index / Math.max(monthKeys.length - 1, 1)) * innerWidth
   const toY = (value: number) => PADDING.top + (1 - (value - yMin) / valueRange) * innerHeight
 
-  const monthlyPoints: ChartPoint[] = monthlyStats
+  const monthlyPoints: ChartPoint[] = monthlyHistory
     .map((point, index): ChartPoint | null => {
       const value = effectiveMode === 'pyeong' ? point.avgPricePerPyeong : point.avgPrice
       if (value == null || value <= 0) return null
@@ -221,7 +213,7 @@ export const PriceChart = ({
         id: point.month,
         x: toX(index),
         y: toY(value),
-        label: effectiveMode === 'pyeong' ? `${point.month} 평균 평당가` : `${point.month} 월평균`,
+        label: effectiveMode === 'pyeong' ? `${point.month} 평균 평당가` : `${point.month} 평균가`,
         value,
         subLabel: [
           `${point.transactionCount}건`,
@@ -233,7 +225,7 @@ export const PriceChart = ({
 
   const movingAveragePoints: ChartPoint[] =
     showMovingAverage && hasEnoughMovingAverageSamples
-      ? monthlyStats
+      ? monthlyHistory
         .map((point, index): ChartPoint | null => {
           const value = movingAverageByMonth.get(point.month)
           if (value == null || value <= 0) return null
@@ -265,7 +257,7 @@ export const PriceChart = ({
         id: `${trade.id}-${trade.contractDate}`,
         x: toX(monthIndex) + offset,
         y: toY(trade.price),
-        label: `${trade.contractDate} 실거래`,
+        label: `${trade.contractDate} 실거래가`,
         value: trade.price,
         subLabel: `${trade.area.toFixed(1)}㎡ · ${trade.floor}층`,
       }
@@ -422,7 +414,7 @@ export const PriceChart = ({
       )}
       {isTradeRecordLimited && (
         <div className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-          실거래가 점 모드는 최근 거래 {tradeRecordLimit?.toLocaleString() ?? '일부'}건만 표시할 수 있어 평균 차트로 분리했습니다.
+          실거래가 점 모드는 최근 거래 {tradeRecordLimit?.toLocaleString() ?? '일부'}건만 표시할 수 있어 평균 차트로 전환했습니다.
         </div>
       )}
     </div>
@@ -485,7 +477,7 @@ const ChartHeader = ({
               if (!(isTradesModeDisabled && option.value === 'trades')) onModeChange(option.value)
             }}
             disabled={isTradesModeDisabled && option.value === 'trades'}
-            title={isTradesModeDisabled && option.value === 'trades' ? '최근 거래 제한이 적용되어 평균 차트로 표시합니다.' : undefined}
+            title={isTradesModeDisabled && option.value === 'trades' ? '최근 거래 표시 제한이 적용되어 평균 차트로 표시합니다.' : undefined}
             className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
               mode === option.value ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-700'
             } ${isTradesModeDisabled && option.value === 'trades' ? 'cursor-not-allowed opacity-50' : ''}`}

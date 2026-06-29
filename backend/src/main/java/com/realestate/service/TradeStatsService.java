@@ -5,6 +5,8 @@ import com.realestate.domain.repository.RealTradeRepository;
 import com.realestate.domain.repository.TopApartmentProjection;
 import com.realestate.domain.repository.TradeTrendCompareProjection;
 import com.realestate.domain.repository.TradeSummaryProjection;
+import com.realestate.service.trade.TradeFilterCriteria;
+import com.realestate.service.trade.TradeFilterCriteriaResolver;
 import com.realestate.web.dto.HighestPriceDealDto;
 import com.realestate.web.dto.TopApartmentDto;
 import com.realestate.web.dto.TradeTrendCompareDto;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TradeStatsService {
 
     private final RealTradeRepository realTradeRepository;
+    private final TradeFilterCriteriaResolver tradeFilterCriteriaResolver;
 
     @Transactional(readOnly = true)
     public TradeTrendDto getTradeTrend(String period) {
@@ -115,80 +118,38 @@ public class TradeStatsService {
             LocalDate startDate,
             LocalDate endDate,
             boolean excludeOutliers) {
-        DateRange dateRange = resolveDateRange(period, startDate, endDate);
-
-        Long minPrice = null;
-        Long maxPrice = null;
-        if ("UNDER_10".equals(priceRange)) {
-            minPrice = 0L;
-            maxPrice = 100_000L;
-        } else if ("10_20".equals(priceRange)) {
-            minPrice = 100_000L;
-            maxPrice = 200_000L;
-        } else if ("OVER_20".equals(priceRange)) {
-            minPrice = 200_000L;
-        }
-
-        Double minArea = null;
-        Double maxArea = null;
-        if ("20".equals(areaRange)) {
-            minArea = 66.0;
-            maxArea = 99.0;
-        } else if ("30".equals(areaRange)) {
-            minArea = 99.0;
-            maxArea = 132.0;
-        } else if ("40".equals(areaRange)) {
-            minArea = 132.0;
-            maxArea = 165.0;
-        }
-
-        String tradeType = resolveTradeType(dealType);
-        boolean onlyNew = "NEW".equals(preset);
-        boolean onlyLarge = "LARGE".equals(preset);
-        boolean onlyHot = "HOT".equals(preset);
-
-        Integer minFloor = null;
-        Integer maxFloor = null;
-        if ("LOW".equals(floorBand)) {
-            minFloor = 1;
-            maxFloor = 5;
-        } else if ("MID".equals(floorBand)) {
-            minFloor = 6;
-            maxFloor = 15;
-        } else if ("HIGH".equals(floorBand)) {
-            minFloor = 16;
-        }
-
-        Integer minAge = null;
-        Integer maxAge = null;
-        if ("NEW_0_10".equals(yearBand)) {
-            minAge = 0;
-            maxAge = 10;
-        } else if ("MID_11_20".equals(yearBand)) {
-            minAge = 11;
-            maxAge = 20;
-        } else if ("OLD_21_PLUS".equals(yearBand)) {
-            minAge = 21;
-        }
+        TradeFilterCriteria criteria = tradeFilterCriteriaResolver.resolveForRanking(
+                period,
+                priceRange,
+                dealType,
+                areaRange,
+                preset,
+                floorBand,
+                yearBand,
+                complexKeyword,
+                startDate,
+                endDate,
+                excludeOutliers
+        );
 
         AtomicInteger rank = new AtomicInteger(1);
         return realTradeRepository.findTopApartmentsByTransactionCountWithFilters(
-                        dateRange.startDate(),
-                        dateRange.endDate(),
-                        tradeType,
-                        minPrice,
-                        maxPrice,
-                        minArea,
-                        maxArea,
-                        onlyNew,
-                        onlyLarge,
-                        onlyHot,
-                        minFloor,
-                        maxFloor,
-                        minAge,
-                        maxAge,
-                        complexKeyword,
-                        excludeOutliers)
+                        criteria.startDate(),
+                        criteria.endDate(),
+                        criteria.tradeType(),
+                        criteria.minPrice(),
+                        criteria.maxPrice(),
+                        criteria.minArea(),
+                        criteria.maxArea(),
+                        criteria.onlyNew(),
+                        criteria.onlyLarge(),
+                        criteria.onlyHot(),
+                        criteria.minFloor(),
+                        criteria.maxFloor(),
+                        criteria.minAge(),
+                        criteria.maxAge(),
+                        criteria.complexKeyword(),
+                        criteria.excludeOutliers())
                 .stream()
                 .map(p -> new TopApartmentDto(
                         rank.getAndIncrement(),
@@ -199,16 +160,6 @@ public class TradeStatsService {
                         p.getRecentMonthAvgPrice()
                 ))
                 .toList();
-    }
-
-    private DateRange resolveDateRange(String period, LocalDate startDate, LocalDate endDate) {
-        if (startDate != null && endDate != null && !endDate.isBefore(startDate)) {
-            return new DateRange(startDate, endDate);
-        }
-
-        int months = resolvePeriodMonths(period);
-        LocalDate now = LocalDate.now();
-        return new DateRange(now.minusMonths(months), now);
     }
 
     private int resolvePeriodDays(String period) {
@@ -222,29 +173,5 @@ public class TradeStatsService {
             default -> 30;
         };
     }
-
-    private int resolvePeriodMonths(String period) {
-        if (period == null) return 1;
-        return switch (period) {
-            case "3m" -> 3;
-            case "6m" -> 6;
-            case "12m" -> 12;
-            case "custom" -> 1;
-            case "1m" -> 1;
-            default -> 1;
-        };
-    }
-
-    private String resolveTradeType(String dealType) {
-        if (dealType == null || dealType.isBlank()) return "SALE";
-        return switch (dealType) {
-            case "SALE" -> "SALE";
-            // Rent data is not collected yet; keep direct API calls aligned with frontend fallback UX.
-            case "JEONSE", "LEASE", "MONTHLY" -> "SALE";
-            default -> "SALE";
-        };
-    }
-
-    private record DateRange(LocalDate startDate, LocalDate endDate) {}
 }
 

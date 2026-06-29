@@ -20,7 +20,7 @@ export const TradeHistoryList = ({ records, selectedType, selectedArea, limit, h
     .filter((record) => isSameArea(record.area, selectedArea))
 
   if (filtered.length === 0) {
-    return <EmptyState icon="거래" title="조건에 맞는 매매 실거래가 없습니다" />
+    return <EmptyState icon="거래" title="조건에 맞는 실거래가 없습니다" />
   }
 
   return (

@@ -8,6 +8,8 @@ public interface TradeRecordProjection {
     BigDecimal getArea();
     String getTradeType();
     Long getTradeAmount();
+    Long getDepositAmount();
+    Long getMonthlyRentAmount();
     String getContractDate();
     Long getPricePerPyeong();
 }

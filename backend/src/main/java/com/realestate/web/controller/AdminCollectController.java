@@ -3,7 +3,9 @@ package com.realestate.web.controller;
 import com.realestate.collect.ApartmentComplexCollector;
 import com.realestate.collect.RealTradeCollector;
 import com.realestate.service.AdminCollectionJobService;
+import com.realestate.service.CollectionJobContext;
 import com.realestate.web.dto.AdminJobStatusDto;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,6 +38,7 @@ public class AdminCollectController {
     private final RealTradeCollector realTradeCollector;
     private final ApartmentComplexCollector apartmentComplexCollector;
     private final AdminCollectionJobService adminCollectionJobService;
+    private final CollectionJobContext collectionJobContext;
 
     // -----------------------------------------------------------------------
     // 거래 데이터 수집 (real_trade 테이블)
@@ -54,7 +57,7 @@ public class AdminCollectController {
         if (months < 1 || months > 12) return ResponseEntity.badRequest().build();
         return startAsyncJob(
                 "TRADE_ALL:" + months + "m",
-                () -> realTradeCollector.collectAllDistricts(months)
+                progress -> realTradeCollector.collectAllDistricts(months, progress::update)
         );
     }
 
@@ -74,7 +77,7 @@ public class AdminCollectController {
             return ResponseEntity.badRequest().build();
         }
         return runExclusiveJob("TRADE_DISTRICT:" + lawdCd + ":" + months + "m",
-                () -> realTradeCollector.collectDistrict(lawdCd, months));
+                progress -> realTradeCollector.collectDistrict(lawdCd, months, progress::update));
     }
 
     // -----------------------------------------------------------------------
@@ -90,7 +93,7 @@ public class AdminCollectController {
     @PostMapping("/complexes/{sigunguCd}")
     public ResponseEntity<?> collectComplexes(@PathVariable String sigunguCd) {
         return runExclusiveJob("COMPLEX_DISTRICT:" + sigunguCd,
-                () -> apartmentComplexCollector.collectComplexes(sigunguCd));
+                progress -> apartmentComplexCollector.collectComplexes(sigunguCd, progress::update));
     }
 
     /**
@@ -103,8 +106,12 @@ public class AdminCollectController {
     public ResponseEntity<AdminJobStatusDto> collectAllComplexes() {
         return startAsyncJob(
                 "COMPLEX_ALL",
-                () -> apartmentComplexCollector.getSupportedSigunguCodes()
-                        .forEach(apartmentComplexCollector::collectComplexes)
+                progress -> {
+                    Map<String, Integer> total = new HashMap<>();
+                    apartmentComplexCollector.getSupportedSigunguCodes()
+                            .forEach(sigunguCd -> mergeStats(total, apartmentComplexCollector.collectComplexes(sigunguCd, progress::update)));
+                    return total;
+                }
         );
     }
 
@@ -116,7 +123,7 @@ public class AdminCollectController {
     @PostMapping("/complexes/backfill-household")
     public ResponseEntity<?> backfillHouseholdCount() {
         return runExclusiveJob("COMPLEX_BACKFILL_HOUSEHOLD",
-                () -> Map.of("updated", apartmentComplexCollector.backfillHouseholdCount()));
+                progress -> Map.of("updated", apartmentComplexCollector.backfillHouseholdCount()));
     }
 
     @GetMapping("/jobs")
@@ -165,7 +172,7 @@ public class AdminCollectController {
         return ResponseEntity.ok(Map.of("status", status, "message", result));
     }
 
-    private ResponseEntity<AdminJobStatusDto> startAsyncJob(String type, Runnable task) {
+    private ResponseEntity<AdminJobStatusDto> startAsyncJob(String type, AdminCollectionJobService.JobTask task) {
         Optional<AdminJobStatusDto> started = adminCollectionJobService.startAsync(type, task);
         return started
                 .map(job -> ResponseEntity.status(HttpStatus.ACCEPTED).body(job))
@@ -182,17 +189,24 @@ public class AdminCollectController {
 
         AdminCollectionJobService.JobHandle job = handle.get();
         try {
-            Map<String, Integer> result = action.run();
-            job.markSucceeded();
+            collectionJobContext.setCurrentJobId(job.jobId());
+            Map<String, Integer> result = action.run(job::updateProgress);
+            job.markSucceeded(result);
             return ResponseEntity.ok(result);
         } catch (RuntimeException | Error ex) {
             job.markFailed(ex);
             throw ex;
+        } finally {
+            collectionJobContext.clear();
         }
+    }
+
+    private void mergeStats(Map<String, Integer> target, Map<String, Integer> source) {
+        source.forEach((key, value) -> target.merge(key, value, Integer::sum));
     }
 
     @FunctionalInterface
     private interface JobAction {
-        Map<String, Integer> run();
+        Map<String, Integer> run(AdminCollectionJobService.ProgressSink progress);
     }
 }

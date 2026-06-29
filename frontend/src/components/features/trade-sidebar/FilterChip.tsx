@@ -11,7 +11,7 @@ export const FilterChip = ({ label, isSelected, onClick, disabled = false, badge
     type="button"
     disabled={disabled}
     aria-disabled={disabled}
-    title={disabled ? '현재는 매매 실거래만 제공됩니다.' : undefined}
+    title={disabled ? '월세 데이터는 준비 중입니다.' : undefined}
     onClick={() => {
       if (!disabled) onClick()
     }}

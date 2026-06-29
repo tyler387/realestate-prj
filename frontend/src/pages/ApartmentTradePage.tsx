@@ -10,8 +10,9 @@ import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
 import { RENT_READY_NOTICE, normalizeSupportedDealType } from '../utils/tradeType'
 
-const DEAL_TYPE_TO_TRADE_TYPE: Record<'SALE', Exclude<TradeType, 'all'>> = {
+const DEAL_TYPE_TO_TRADE_TYPE: Record<'SALE' | 'JEONSE', Exclude<TradeType, 'all'>> = {
   SALE: '매매',
+  JEONSE: '전세',
 }
 
 export const ApartmentTradePage = () => {
@@ -19,7 +20,6 @@ export const ApartmentTradePage = () => {
   const aptId = Number(id)
   const [selectedType, setSelectedType] = useState<TradeType>('all')
   const [selectedArea, setSelectedArea] = useState<number | null>(null)
-  // 상세 차트 기간은 상단 실거래 목록 기간 필터와 독립적으로 운용한다.
   const [priceHistoryRange, setPriceHistoryRange] = useState<PriceHistoryRange>('1y')
   const [isFavorite, setIsFavorite] = useState(false)
   const status = useUserStore((s) => s.status)
@@ -41,8 +41,7 @@ export const ApartmentTradePage = () => {
   const effectiveDealType = normalizeSupportedDealType(dealType)
 
   useEffect(() => {
-    // 외부 상태로 전월세 타입이 유입돼도 상세 탭은 매매 중심 UX로 복구한다.
-    if (selectedType === '전세' || selectedType === '월세') setSelectedType('all')
+    if (selectedType === '월세') setSelectedType('all')
   }, [selectedType])
 
   useEffect(() => {

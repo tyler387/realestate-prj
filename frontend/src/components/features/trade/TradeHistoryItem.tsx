@@ -16,17 +16,25 @@ const formatTradePrice = (record: TradeRecord): string => {
 
 type Props = { record: TradeRecord }
 
-export const TradeHistoryItem = ({ record }: Props) => (
-  <div className="border-b border-gray-100 px-4 py-3">
-    <div className="flex items-center justify-between">
-      <span className={`rounded-full px-2 py-0.5 text-xs ${BADGE_STYLES[record.tradeType]}`}>
-        {record.tradeType}
-      </span>
-      <span className="text-xs text-gray-400">{record.contractDate}</span>
+export const TradeHistoryItem = ({ record }: Props) => {
+  const details = [
+    record.buildingName,
+    record.area > 0 ? `전용 ${record.area}㎡` : null,
+    record.floor !== '-' ? `${record.floor}층` : null,
+  ].filter(Boolean)
+
+  return (
+    <div className="border-b border-gray-100 px-4 py-3">
+      <div className="flex items-center justify-between">
+        <span className={`rounded-full px-2 py-0.5 text-xs ${BADGE_STYLES[record.tradeType]}`}>
+          {record.tradeType}
+        </span>
+        <span className="text-xs text-gray-400">{record.contractDate}</span>
+      </div>
+      <p className="mt-1 text-base font-bold text-gray-900">{formatTradePrice(record)}</p>
+      {details.length > 0 && (
+        <p className="mt-0.5 text-xs text-gray-400">{details.join(' · ')}</p>
+      )}
     </div>
-    <p className="mt-1 text-base font-bold text-gray-900">{formatTradePrice(record)}</p>
-    <p className="mt-0.5 text-xs text-gray-400">
-      {[record.buildingName, `전용 ${record.area}㎡`, `${record.floor}층`].filter(Boolean).join(' · ')}
-    </p>
-  </div>
-)
+  )
+}

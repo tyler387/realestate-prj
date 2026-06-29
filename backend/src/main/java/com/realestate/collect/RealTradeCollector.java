@@ -6,6 +6,7 @@ import com.realestate.domain.entity.RealTrade;
 import com.realestate.domain.entity.TradeType;
 import com.realestate.domain.repository.ApartmentRepository;
 import com.realestate.domain.repository.RealTradeRepository;
+import com.realestate.service.CollectionIssueService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -13,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,62 +22,38 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
-/**
- * 국토교통부 아파트 매매 실거래가 수집기.
- *
- * <p>사용 API: getRTMSDataSvcAptTrade (매매 전용)
- * 전세·월세는 getRTMSDataSvcAptRent API가 별도로 존재하며 현재 미수집.
- *
- * <p>수집 순서: apartment 테이블에 단지 마스터가 먼저 적재된 후 실행해야
- * apartment_id 연결이 가능합니다.
- *
- * <p>단지 매칭 전략 (aptNm 기준):
- * 두 API의 단지명 형식이 다를 수 있으므로 아래 순서로 fallback 매칭합니다.
- * 1. aptNm + umdNm(법정동) — 가장 정확
- * 2. aptNm + "아파트" + umdNm — 단지목록 API가 "아파트" 접미사를 붙이는 경우
- * 3. aptNm + sigungu — 법정동 불일치 fallback
- * 4. aptNm + "아파트" + sigungu — 최후 fallback
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class RealTradeCollector {
 
     private static final String TRADE_API_PATH = "/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade";
-    private static final String SEOUL = "서울특별시";
+    private static final String RENT_API_PATH = "/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent";
+    private static final String SEOUL = "\uC11C\uC6B8\uD2B9\uBCC4\uC2DC";
+    private static final String APARTMENT_SUFFIX = "\uC544\uD30C\uD2B8";
     private static final DateTimeFormatter DEAL_YMD_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
 
     private final WebClient webClient;
     private final ApartmentRepository apartmentRepository;
     private final RealTradeRepository realTradeRepository;
+    private final CollectionIssueService collectionIssueService;
 
     @Value("${external.public-data.service-key}")
     private String publicDataServiceKey;
 
-    /**
-     * 지원 지역 목록 (시군구코드 → 수집 대상 정보).
-     * 새 지역 추가 시 ApartmentComplexCollector.DISTRICTS에도 동일하게 추가해야 합니다.
-     */
     private static final Map<String, CollectTarget> SUPPORTED_DISTRICTS = Map.of(
-        "11650", new CollectTarget("11650", SEOUL, "서초구"),
-        "11710", new CollectTarget("11710", SEOUL, "송파구"),
-        "11680", new CollectTarget("11680", SEOUL, "강남구"),
-        "11440", new CollectTarget("11440", SEOUL, "마포구"),
-        "41111", new CollectTarget("41111", "경기도", "수원시 장안구")
+            "11650", new CollectTarget("11650", SEOUL, "\uC11C\uCD08\uAD6C"),
+            "11710", new CollectTarget("11710", SEOUL, "\uC1A1\uD30C\uAD6C"),
+            "11680", new CollectTarget("11680", SEOUL, "\uAC15\uB0A8\uAD6C"),
+            "11440", new CollectTarget("11440", SEOUL, "\uB9C8\uD3EC\uAD6C"),
+            "41111", new CollectTarget("41111", "\uACBD\uAE30\uB3C4", "\uC218\uC6D0\uC2DC \uC7A5\uC548\uAD6C")
     );
 
-    // -----------------------------------------------------------------------
-    // Public API
-    // -----------------------------------------------------------------------
-
-    /**
-     * 특정 지역의 실거래가를 지정 개월 수만큼 수집합니다.
-     * 엔드포인트: POST /api/v1/admin/collect/{lawdCd}?months=N
-     *
-     * @param lawdCd 법정동코드 앞 5자리 (예: 11710=송파구)
-     * @param months 수집 개월 수 (1~12)
-     */
     public Map<String, Integer> collectDistrict(String lawdCd, int months) {
+        return collectDistrict(lawdCd, months, null);
+    }
+
+    public Map<String, Integer> collectDistrict(String lawdCd, int months, BiConsumer<String, Map<String, Integer>> progressCallback) {
         CollectTarget target = SUPPORTED_DISTRICTS.get(lawdCd);
         if (target == null) throw new IllegalArgumentException("Unsupported lawdCd: " + lawdCd);
 
@@ -83,35 +61,49 @@ public class RealTradeCollector {
         YearMonth current = YearMonth.now();
         for (int offset = 0; offset < months; offset++) {
             String dealYmd = current.minusMonths(offset).format(DEAL_YMD_FORMATTER);
+            reportProgress(progressCallback, "Collecting trades " + target.sigungu() + " " + dealYmd, stats);
             collectMonthByDistrict(target, dealYmd, stats);
+            collectRentMonthByDistrict(target, dealYmd, stats);
+            reportProgress(progressCallback, "Collected trades " + target.sigungu() + " " + dealYmd, stats);
         }
         return stats;
     }
 
-    /**
-     * 전체 지원 지역의 실거래가를 지정 개월 수만큼 수집합니다.
-     * 엔드포인트: POST /api/v1/admin/collect
-     *
-     * @param months 수집 개월 수 (기본 12)
-     */
     public Map<String, Integer> collectAllDistricts(int months) {
+        return collectAllDistricts(months, null);
+    }
+
+    public Map<String, Integer> collectAllDistricts(int months, BiConsumer<String, Map<String, Integer>> progressCallback) {
         Map<String, Integer> stats = initStats();
         YearMonth current = YearMonth.now();
         for (int offset = 0; offset < months; offset++) {
             String dealYmd = current.minusMonths(offset).format(DEAL_YMD_FORMATTER);
             for (CollectTarget target : SUPPORTED_DISTRICTS.values()) {
+                reportProgress(progressCallback, "Collecting trades " + target.sigungu() + " " + dealYmd, stats);
                 collectMonthByDistrict(target, dealYmd, stats);
+                collectRentMonthByDistrict(target, dealYmd, stats);
+                reportProgress(progressCallback, "Collected trades " + target.sigungu() + " " + dealYmd, stats);
             }
         }
         return stats;
     }
 
-    // -----------------------------------------------------------------------
-    // 수집 내부 로직
-    // -----------------------------------------------------------------------
-
-    /** 특정 지역·월의 거래를 페이지네이션으로 전부 수집합니다. */
     private void collectMonthByDistrict(CollectTarget target, String dealYmd, Map<String, Integer> stats) {
+        collectPagedApi(target, dealYmd, stats, TRADE_API_PATH, "REAL_TRADE", this::saveSingleTrade);
+    }
+
+    private void collectRentMonthByDistrict(CollectTarget target, String dealYmd, Map<String, Integer> stats) {
+        collectPagedApi(target, dealYmd, stats, RENT_API_PATH, "REAL_RENT", this::saveSingleRent);
+    }
+
+    private void collectPagedApi(
+            CollectTarget target,
+            String dealYmd,
+            Map<String, Integer> stats,
+            String apiPath,
+            String sourceType,
+            TradeItemSaver saver
+    ) {
         final int numOfRows = 1000;
         int pageNo = 1;
         int totalFetched = 0;
@@ -122,26 +114,40 @@ public class RealTradeCollector {
             JsonNode response;
             try {
                 response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                        .scheme("https").host("apis.data.go.kr").path(TRADE_API_PATH)
-                        .queryParam("serviceKey", publicDataServiceKey)
-                        .queryParam("LAWD_CD", target.lawdCd())
-                        .queryParam("DEAL_YMD", dealYmd)
-                        .queryParam("numOfRows", numOfRows)
-                        .queryParam("pageNo", currentPage)
-                        .queryParam("_type", "json")
-                        .build())
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block();
+                        .uri(uriBuilder -> uriBuilder
+                                .scheme("https").host("apis.data.go.kr").path(apiPath)
+                                .queryParam("serviceKey", publicDataServiceKey)
+                                .queryParam("LAWD_CD", target.lawdCd())
+                                .queryParam("DEAL_YMD", dealYmd)
+                                .queryParam("numOfRows", numOfRows)
+                                .queryParam("pageNo", currentPage)
+                                .queryParam("_type", "json")
+                                .build())
+                        .retrieve()
+                        .bodyToMono(JsonNode.class)
+                        .block();
             } catch (Exception e) {
-                log.error("API 호출 실패 — sigungu={}, dealYmd={}, page={}: {}",
-                        target.sigungu(), dealYmd, currentPage, e.getMessage());
+                log.error("Collection API call failed. sourceType={}, sigungu={}, dealYmd={}, page={}: {}",
+                        sourceType, target.sigungu(), dealYmd, currentPage, e.getMessage());
+                collectionIssueService.recordIssue(
+                        sourceType,
+                        "API_ERROR",
+                        target.sigungu(),
+                        null,
+                        null,
+                        target.lawdCd(),
+                        dealYmd,
+                        null,
+                        "API call failed on page " + currentPage + ": " + e.getMessage()
+                );
                 break;
             }
 
             JsonNode body = response == null ? null : response.path("response").path("body");
             totalCount = body == null ? 0 : body.path("totalCount").asInt(0);
+            if (currentPage == 1) {
+                stats.merge("totalCount", totalCount, Integer::sum);
+            }
 
             JsonNode itemNode = extractItemNode(response);
             if (itemNode == null || itemNode.isMissingNode() || itemNode.isNull()) break;
@@ -149,61 +155,91 @@ public class RealTradeCollector {
             int pageItemCount = 0;
             if (itemNode.isArray()) {
                 for (JsonNode node : itemNode) {
-                    saveSingleTrade(node, target.sigungu(), stats);
+                    saver.save(node, target, dealYmd, stats);
                     pageItemCount++;
                 }
             } else {
-                saveSingleTrade(itemNode, target.sigungu(), stats);
+                saver.save(itemNode, target, dealYmd, stats);
                 pageItemCount = 1;
             }
 
             totalFetched += pageItemCount;
+            stats.merge("processedCount", pageItemCount, Integer::sum);
             pageNo++;
             if (pageItemCount < numOfRows) break;
-
         } while (totalFetched < totalCount);
     }
 
-    /**
-     * 거래 1건을 파싱하여 real_trade 테이블에 저장합니다.
-     * 단지 마스터가 없으면 스킵합니다.
-     */
-    private void saveSingleTrade(JsonNode item, String sigungu, Map<String, Integer> stats) {
+    private void saveSingleTrade(JsonNode item, CollectTarget target, String dealYmd, Map<String, Integer> stats) {
         String aptNm = text(item, "aptNm");
         if (aptNm == null || aptNm.isBlank()) return;
 
-        // API 간 단지명 형식 차이를 고려한 다단계 매칭
         String umdNm = text(item, "umdNm");
-        Optional<Apartment> found = resolveApartment(aptNm, umdNm, sigungu);
+        Optional<Apartment> found = resolveApartment(aptNm, umdNm, target.sigungu());
         if (found.isEmpty()) {
-            log.warn("단지 마스터 없음 — 거래 스킵. sigungu={}, umdNm={}, aptNm={}", sigungu, umdNm, aptNm);
+            log.warn("Apartment match not found. sigungu={}, umdNm={}, aptNm={}", target.sigungu(), umdNm, aptNm);
             stats.computeIfPresent("skippedNoApartment", (k, v) -> v + 1);
+            collectionIssueService.recordIssue(
+                    "REAL_TRADE",
+                    "NO_APARTMENT_MATCH",
+                    target.sigungu(),
+                    umdNm,
+                    aptNm,
+                    target.lawdCd(),
+                    dealYmd,
+                    item,
+                    "No apartment matched for trade item"
+            );
             return;
         }
 
-        Integer tradeYear  = intValue(item, "dealYear");
+        Integer tradeYear = intValue(item, "dealYear");
         Integer tradeMonth = intValue(item, "dealMonth");
-        Integer tradeDay   = intValue(item, "dealDay");
-        if (tradeYear == null || tradeMonth == null || tradeDay == null) return;
+        Integer tradeDay = intValue(item, "dealDay");
+        if (tradeYear == null || tradeMonth == null || tradeDay == null) {
+            collectionIssueService.recordIssue(
+                    "REAL_TRADE",
+                    "INVALID_TRADE_DATE",
+                    target.sigungu(),
+                    umdNm,
+                    aptNm,
+                    target.lawdCd(),
+                    dealYmd,
+                    item,
+                    "Missing trade date fields"
+            );
+            return;
+        }
 
         LocalDate tradeDate;
         try {
             tradeDate = LocalDate.of(tradeYear, tradeMonth, tradeDay);
         } catch (RuntimeException e) {
-            log.warn("날짜 파싱 실패. year={}, month={}, day={}, aptNm={}", tradeYear, tradeMonth, tradeDay, aptNm);
+            log.warn("Trade date parsing failed. year={}, month={}, day={}, aptNm={}", tradeYear, tradeMonth, tradeDay, aptNm);
+            collectionIssueService.recordIssue(
+                    "REAL_TRADE",
+                    "INVALID_TRADE_DATE",
+                    target.sigungu(),
+                    umdNm,
+                    aptNm,
+                    target.lawdCd(),
+                    dealYmd,
+                    item,
+                    "Invalid trade date: " + tradeYear + "-" + tradeMonth + "-" + tradeDay
+            );
             return;
         }
 
         RealTrade trade = RealTrade.create(
-            found.get(),
-            TradeType.SALE,
-            tradeDate,
-            tradeYear,
-            tradeMonth,
-            decimalValue(item, "excluUseAr"),
-            parseTradeAmount(text(item, "dealAmount")),
-            intValue(item, "floor"),
-            false
+                found.get(),
+                TradeType.SALE,
+                tradeDate,
+                tradeYear,
+                tradeMonth,
+                decimalValue(item, "excluUseAr"),
+                parseTradeAmount(text(item, "dealAmount")),
+                intValue(item, "floor"),
+                false
         );
 
         try {
@@ -214,29 +250,118 @@ public class RealTradeCollector {
         }
     }
 
-    /**
-     * 단지명 기반 다단계 매칭.
-     * 두 API의 단지명 형식 차이("헬리오시티" vs "헬리오시티아파트")를 흡수합니다.
-     * umdNm(법정동) 기준으로 먼저 좁히고, 없으면 sigungu(시군구) 기준으로 폴백합니다.
-     */
+    private void saveSingleRent(JsonNode item, CollectTarget target, String dealYmd, Map<String, Integer> stats) {
+        String aptNm = text(item, "aptNm");
+        if (aptNm == null || aptNm.isBlank()) return;
+
+        String umdNm = text(item, "umdNm");
+        Optional<Apartment> found = resolveApartment(aptNm, umdNm, target.sigungu());
+        if (found.isEmpty()) {
+            log.warn("Apartment match not found for rent. sigungu={}, umdNm={}, aptNm={}", target.sigungu(), umdNm, aptNm);
+            stats.computeIfPresent("skippedNoApartment", (k, v) -> v + 1);
+            collectionIssueService.recordIssue(
+                    "REAL_RENT",
+                    "NO_APARTMENT_MATCH",
+                    target.sigungu(),
+                    umdNm,
+                    aptNm,
+                    target.lawdCd(),
+                    dealYmd,
+                    item,
+                    "No apartment matched for rent item"
+            );
+            return;
+        }
+
+        Integer tradeYear = intValue(item, "dealYear");
+        Integer tradeMonth = intValue(item, "dealMonth");
+        Integer tradeDay = intValue(item, "dealDay");
+        if (tradeYear == null || tradeMonth == null || tradeDay == null) {
+            collectionIssueService.recordIssue(
+                    "REAL_RENT",
+                    "INVALID_TRADE_DATE",
+                    target.sigungu(),
+                    umdNm,
+                    aptNm,
+                    target.lawdCd(),
+                    dealYmd,
+                    item,
+                    "Missing rent contract date fields"
+            );
+            return;
+        }
+
+        LocalDate tradeDate;
+        try {
+            tradeDate = LocalDate.of(tradeYear, tradeMonth, tradeDay);
+        } catch (RuntimeException e) {
+            collectionIssueService.recordIssue(
+                    "REAL_RENT",
+                    "INVALID_TRADE_DATE",
+                    target.sigungu(),
+                    umdNm,
+                    aptNm,
+                    target.lawdCd(),
+                    dealYmd,
+                    item,
+                    "Invalid rent contract date: " + tradeYear + "-" + tradeMonth + "-" + tradeDay
+            );
+            return;
+        }
+
+        Long depositAmount = parseTradeAmount(text(item, "deposit"));
+        Long monthlyRentAmount = parseTradeAmount(text(item, "monthlyRent"));
+        if (depositAmount == null) {
+            collectionIssueService.recordIssue(
+                    "REAL_RENT",
+                    "INVALID_AMOUNT",
+                    target.sigungu(),
+                    umdNm,
+                    aptNm,
+                    target.lawdCd(),
+                    dealYmd,
+                    item,
+                    "Missing rent deposit amount"
+            );
+            return;
+        }
+
+        TradeType tradeType = monthlyRentAmount != null && monthlyRentAmount > 0 ? TradeType.MONTHLY : TradeType.LEASE;
+        RealTrade trade = RealTrade.createRent(
+                found.get(),
+                tradeType,
+                tradeDate,
+                tradeYear,
+                tradeMonth,
+                decimalValue(item, "excluUseAr"),
+                depositAmount,
+                monthlyRentAmount,
+                intValue(item, "floor"),
+                false
+        );
+
+        try {
+            realTradeRepository.saveAndFlush(trade);
+            stats.computeIfPresent(tradeType == TradeType.LEASE ? "savedLeases" : "savedMonthlyRents", (k, v) -> v + 1);
+        } catch (DataIntegrityViolationException e) {
+            stats.computeIfPresent("duplicateRents", (k, v) -> v + 1);
+        }
+    }
+
     private Optional<Apartment> resolveApartment(String aptNm, String umdNm, String sigungu) {
         if (umdNm != null) {
             Optional<Apartment> found = apartmentRepository.findFirstByComplexNameAndEupMyeonDong(aptNm, umdNm);
             if (found.isPresent()) return found;
 
-            found = apartmentRepository.findFirstByComplexNameAndEupMyeonDong(aptNm + "아파트", umdNm);
+            found = apartmentRepository.findFirstByComplexNameAndEupMyeonDong(aptNm + APARTMENT_SUFFIX, umdNm);
             if (found.isPresent()) return found;
         }
 
         Optional<Apartment> found = apartmentRepository.findFirstByComplexNameAndSigungu(aptNm, sigungu);
         if (found.isPresent()) return found;
 
-        return apartmentRepository.findFirstByComplexNameAndSigungu(aptNm + "아파트", sigungu);
+        return apartmentRepository.findFirstByComplexNameAndSigungu(aptNm + APARTMENT_SUFFIX, sigungu);
     }
-
-    // -----------------------------------------------------------------------
-    // 유틸리티
-    // -----------------------------------------------------------------------
 
     private JsonNode extractItemNode(JsonNode response) {
         if (response == null) return null;
@@ -246,9 +371,18 @@ public class RealTradeCollector {
     private Map<String, Integer> initStats() {
         Map<String, Integer> stats = new HashMap<>();
         stats.put("savedTrades", 0);
+        stats.put("savedLeases", 0);
+        stats.put("savedMonthlyRents", 0);
         stats.put("skippedNoApartment", 0);
         stats.put("duplicateTrades", 0);
+        stats.put("duplicateRents", 0);
         return stats;
+    }
+
+    private void reportProgress(BiConsumer<String, Map<String, Integer>> progressCallback, String message, Map<String, Integer> stats) {
+        if (progressCallback != null) {
+            progressCallback.accept(message, Map.copyOf(stats));
+        }
     }
 
     private String text(JsonNode node, String field) {
@@ -287,4 +421,9 @@ public class RealTradeCollector {
     }
 
     private record CollectTarget(String lawdCd, String sido, String sigungu) {}
+
+    @FunctionalInterface
+    private interface TradeItemSaver {
+        void save(JsonNode item, CollectTarget target, String dealYmd, Map<String, Integer> stats);
+    }
 }

@@ -8,6 +8,8 @@ public record TradeRecordDto(
         BigDecimal area,
         String tradeType,
         Long tradeAmount,
+        Long depositAmount,
+        Long monthlyRentAmount,
         String contractDate,
         Long pricePerPyeong
 ) {

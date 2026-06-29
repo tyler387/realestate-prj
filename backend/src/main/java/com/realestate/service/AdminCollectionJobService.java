@@ -1,43 +1,79 @@
 package com.realestate.service;
 
+import com.realestate.domain.entity.CollectionJob;
+import com.realestate.domain.repository.CollectionJobRepository;
 import com.realestate.web.dto.AdminJobStatusDto;
-import java.time.LocalDateTime;
-import java.util.Comparator;
+import jakarta.annotation.PostConstruct;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class AdminCollectionJobService {
 
-    private static final int RECENT_JOB_LIMIT = 20;
-
-    private final ConcurrentMap<String, MutableAdminJob> jobs = new ConcurrentHashMap<>();
+    private final CollectionJobRepository collectionJobRepository;
+    private final Executor collectionJobExecutor;
+    private final CollectionJobContext collectionJobContext;
     private final AtomicReference<String> runningJobId = new AtomicReference<>();
 
-    public Optional<AdminJobStatusDto> startAsync(String type, Runnable task) {
+    public AdminCollectionJobService(
+            CollectionJobRepository collectionJobRepository,
+            @Qualifier("collectionJobExecutor") Executor collectionJobExecutor,
+            CollectionJobContext collectionJobContext
+    ) {
+        this.collectionJobRepository = collectionJobRepository;
+        this.collectionJobExecutor = collectionJobExecutor;
+        this.collectionJobContext = collectionJobContext;
+    }
+
+    @PostConstruct
+    void markStaleRunningJobsFailed() {
+        collectionJobRepository.findByStatus("RUNNING").forEach(job -> {
+            job.markFailed("Server restarted before collection job completed");
+            collectionJobRepository.saveAndFlush(job);
+        });
+    }
+
+    public Optional<AdminJobStatusDto> startAsync(String type, JobTask task) {
         Optional<JobHandle> handle = begin(type);
         if (handle.isEmpty()) {
             return Optional.empty();
         }
 
         JobHandle job = handle.get();
-        CompletableFuture.runAsync(() -> {
-            try {
-                task.run();
-                job.markSucceeded();
-            } catch (RuntimeException | Error ex) {
-                job.markFailed(ex);
-                throw ex;
-            }
-        });
+        try {
+            CompletableFuture.runAsync(() -> {
+                try {
+                    collectionJobContext.setCurrentJobId(job.jobId());
+                    Map<String, Integer> stats = task.run(job::updateProgress);
+                    job.markSucceeded(stats);
+                } catch (RuntimeException | Error ex) {
+                    job.markFailed(ex);
+                    log.error("Collection job failed. jobId={}, type={}", job.jobId(), type, ex);
+                    throw ex;
+                } finally {
+                    collectionJobContext.clear();
+                }
+            }, collectionJobExecutor);
+        } catch (RuntimeException ex) {
+            job.markFailed(ex);
+            log.error("Collection job submission failed. jobId={}, type={}", job.jobId(), type, ex);
+            throw ex;
+        }
 
         return Optional.of(job.toDto());
+    }
+
+    public Optional<AdminJobStatusDto> startAsync(String type, SimpleJobTask task) {
+        return startAsync(type, progress -> task.run());
     }
 
     public Optional<JobHandle> begin(String type) {
@@ -46,14 +82,18 @@ public class AdminCollectionJobService {
             return Optional.empty();
         }
 
-        MutableAdminJob job = new MutableAdminJob(jobId, type, "RUNNING", LocalDateTime.now(), null, null);
-        jobs.put(jobId, job);
-        return Optional.of(new JobHandle(job));
+        CollectionJob job = CollectionJob.start(jobId, type);
+        try {
+            collectionJobRepository.saveAndFlush(job);
+            return Optional.of(new JobHandle(jobId));
+        } catch (RuntimeException ex) {
+            runningJobId.compareAndSet(jobId, null);
+            throw ex;
+        }
     }
 
     public Optional<AdminJobStatusDto> getJob(String jobId) {
-        MutableAdminJob job = jobs.get(jobId);
-        return job == null ? Optional.empty() : Optional.of(job.toDto());
+        return collectionJobRepository.findById(jobId).map(this::toDto);
     }
 
     public Optional<AdminJobStatusDto> getRunningJob() {
@@ -62,79 +102,81 @@ public class AdminCollectionJobService {
     }
 
     public List<AdminJobStatusDto> getRecentJobs() {
-        return jobs.values()
+        return collectionJobRepository.findTop20ByOrderByStartedAtDesc()
                 .stream()
-                .sorted(Comparator.comparing(MutableAdminJob::startedAt).reversed())
-                .limit(RECENT_JOB_LIMIT)
-                .map(MutableAdminJob::toDto)
+                .map(this::toDto)
                 .toList();
     }
 
     public class JobHandle {
-        private final MutableAdminJob job;
-
-        private JobHandle(MutableAdminJob job) {
-            this.job = job;
-        }
-
-        public AdminJobStatusDto toDto() {
-            return job.toDto();
-        }
-
-        public void markSucceeded() {
-            finish("SUCCEEDED", null);
-        }
-
-        public void markFailed(Throwable ex) {
-            finish("FAILED", ex.getMessage());
-        }
-
-        private void finish(String status, String errorMessage) {
-            job.finish(status, LocalDateTime.now(), errorMessage);
-            runningJobId.compareAndSet(job.jobId(), null);
-        }
-    }
-
-    private static final class MutableAdminJob {
         private final String jobId;
-        private final String type;
-        private final LocalDateTime startedAt;
-        private volatile String status;
-        private volatile LocalDateTime finishedAt;
-        private volatile String errorMessage;
 
-        private MutableAdminJob(
-                String jobId,
-                String type,
-                String status,
-                LocalDateTime startedAt,
-                LocalDateTime finishedAt,
-                String errorMessage
-        ) {
+        private JobHandle(String jobId) {
             this.jobId = jobId;
-            this.type = type;
-            this.status = status;
-            this.startedAt = startedAt;
-            this.finishedAt = finishedAt;
-            this.errorMessage = errorMessage;
         }
 
-        private String jobId() {
+        public String jobId() {
             return jobId;
         }
 
-        private LocalDateTime startedAt() {
-            return startedAt;
+        public AdminJobStatusDto toDto() {
+            return getJob(jobId).orElseThrow();
         }
 
-        private void finish(String status, LocalDateTime finishedAt, String errorMessage) {
-            this.status = status;
-            this.finishedAt = finishedAt;
-            this.errorMessage = errorMessage;
+        public void markSucceeded() {
+            markSucceeded(Map.of());
         }
 
-        private AdminJobStatusDto toDto() {
-            return new AdminJobStatusDto(jobId, type, status, startedAt, finishedAt, errorMessage);
+        public void markSucceeded(Map<String, Integer> stats) {
+            CollectionJob job = collectionJobRepository.findById(jobId).orElseThrow();
+            job.markSucceeded(stats);
+            collectionJobRepository.saveAndFlush(job);
+            runningJobId.compareAndSet(jobId, null);
         }
+
+        public void markFailed(Throwable ex) {
+            CollectionJob job = collectionJobRepository.findById(jobId).orElseThrow();
+            job.markFailed(ex.getMessage());
+            collectionJobRepository.saveAndFlush(job);
+            runningJobId.compareAndSet(jobId, null);
+        }
+
+        public void updateProgress(String progressMessage, Map<String, Integer> stats) {
+            CollectionJob job = collectionJobRepository.findById(jobId).orElseThrow();
+            job.updateProgress(progressMessage, stats);
+            collectionJobRepository.saveAndFlush(job);
+        }
+    }
+
+    private AdminJobStatusDto toDto(CollectionJob job) {
+        return new AdminJobStatusDto(
+                job.getJobId(),
+                job.getType(),
+                job.getStatus(),
+                job.getStartedAt(),
+                job.getFinishedAt(),
+                job.getErrorMessage(),
+                job.getProgressMessage(),
+                job.getTotalCount(),
+                job.getProcessedCount(),
+                job.getSavedCount(),
+                job.getSkippedCount(),
+                job.getDuplicateCount()
+        );
+    }
+
+    @FunctionalInterface
+    public interface JobTask {
+        Map<String, Integer> run(ProgressSink progress);
+    }
+
+    @FunctionalInterface
+    public interface SimpleJobTask {
+        Map<String, Integer> run();
+    }
+
+    @FunctionalInterface
+    public interface ProgressSink {
+        void update(String progressMessage, Map<String, Integer> stats);
     }
 }

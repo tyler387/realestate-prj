@@ -1,37 +1,45 @@
 package com.realestate.service;
 
-import com.realestate.domain.repository.RealTradeRepository;
-import com.realestate.domain.repository.TopApartmentProjection;
-import java.time.LocalDate;
-import java.util.List;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 
+import com.realestate.domain.repository.RealTradeRepository;
+import com.realestate.domain.repository.TopApartmentProjection;
+import com.realestate.service.trade.TradeFilterCriteriaResolver;
+import java.time.LocalDate;
+import java.util.List;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 @ExtendWith(MockitoExtension.class)
 class TradeStatsServiceTest {
 
     @Mock
     private RealTradeRepository realTradeRepository;
+    @Spy
+    private TradeFilterCriteriaResolver tradeFilterCriteriaResolver = new TradeFilterCriteriaResolver();
     @InjectMocks
     private TradeStatsService tradeStatsService;
 
     @ParameterizedTest
-    @ValueSource(strings = {"JEONSE", "LEASE", "MONTHLY"})
-    void getTopApartments_normalizesUnsupportedRentDealTypesToSale(String dealType) {
+    @CsvSource({
+            "JEONSE, LEASE",
+            "LEASE, LEASE",
+            "MONTHLY, MONTHLY"
+    })
+    void getTopApartments_resolvesRentDealTypesToStoredTradeTypes(String dealType, String expectedTradeType) {
         when(realTradeRepository.findTopApartmentsByTransactionCountWithFilters(
                 any(LocalDate.class),
                 any(LocalDate.class),
-                eq("SALE"),
+                eq(expectedTradeType),
                 isNull(),
                 isNull(),
                 isNull(),

@@ -22,6 +22,8 @@ type ApiTrade = {
   area: number | null
   tradeType: string
   tradeAmount: number | null
+  depositAmount: number | null
+  monthlyRentAmount: number | null
   contractDate: string
   pricePerPyeong: number | null
 }
@@ -140,6 +142,8 @@ export const useApartmentTrade = (
             tradeType: toTradeTypeLabel(t.tradeType),
             price: t.tradeAmount ?? 0,
             pricePerPyeong: t.pricePerPyeong,
+            deposit: t.depositAmount ?? undefined,
+            monthlyRent: t.monthlyRentAmount ?? undefined,
             contractDate: t.contractDate ?? '-',
           })),
           displayedCount: data.displayedCount,
