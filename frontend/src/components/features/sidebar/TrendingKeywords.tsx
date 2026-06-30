@@ -2,7 +2,7 @@
 import { useUiStore } from '../../../stores/uiStore'
 import { usePostStore } from '../../../stores/postStore'
 import { SidebarCard } from './SidebarCard'
-import { KeywordsSkeleton } from './SidebarSkeleton'
+import { ErrorMessage, KeywordsSkeleton, SidebarEmptyState } from './SidebarSkeleton'
 import { KeywordChip } from './KeywordChip'
 import type { BoardCode, CommunityScope } from '../../../types'
 
@@ -16,8 +16,6 @@ export const TrendingKeywords = ({ scope, aptId, boardCode }: Props) => {
   const { data, isLoading, isError } = useTrendingKeywords(scope, aptId, boardCode)
   const { searchKeyword, setSearchKeyword } = useUiStore()
   const { setCategory } = usePostStore()
-
-  if (isError) return null
 
   const keywords = data ?? []
   const topKeywords = keywords.slice(0, 3)
@@ -39,12 +37,13 @@ export const TrendingKeywords = ({ scope, aptId, boardCode }: Props) => {
       </div>
 
       {isLoading && <KeywordsSkeleton />}
+      {isError && <ErrorMessage text="키워드를 불러올 수 없습니다" />}
 
-      {!isLoading && keywords.length === 0 && (
-        <p className="py-2 text-xs text-gray-400">아직 집계된 키워드가 없습니다</p>
+      {!isLoading && !isError && keywords.length === 0 && (
+        <SidebarEmptyState text="아직 집계된 키워드가 없습니다" />
       )}
 
-      {!!topKeywords.length && (
+      {!isError && !!topKeywords.length && (
         <div className="mb-2.5 flex flex-wrap gap-2">
           {topKeywords.map((keyword, idx) => (
             <KeywordChip
@@ -59,7 +58,7 @@ export const TrendingKeywords = ({ scope, aptId, boardCode }: Props) => {
         </div>
       )}
 
-      {!!normalKeywords.length && (
+      {!isError && !!normalKeywords.length && (
         <div className="flex flex-wrap gap-2">
           {normalKeywords.map((keyword, idx) => (
             <KeywordChip

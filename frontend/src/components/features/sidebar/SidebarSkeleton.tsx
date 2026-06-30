@@ -52,5 +52,9 @@ export const PriceTrendSkeleton = () => (
 )
 
 export const ErrorMessage = ({ text }: { text: string }) => (
-  <p className="py-4 text-center text-xs text-gray-400">{text}</p>
+  <p className="py-4 text-center text-xs text-gray-500">{text}</p>
+)
+
+export const SidebarEmptyState = ({ text }: { text: string }) => (
+  <p className="rounded-lg bg-gray-50 px-3 py-4 text-center text-xs text-gray-500">{text}</p>
 )

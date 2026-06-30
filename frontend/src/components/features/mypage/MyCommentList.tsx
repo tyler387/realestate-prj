@@ -6,6 +6,12 @@ import { EmptyState } from '../../common/EmptyState'
 import { ConfirmDialog } from '../../common/ConfirmDialog'
 import { useUiStore } from '../../../stores/uiStore'
 import { communityLocationLabel } from '../../../utils/communityLabels'
+import type { Comment } from '../../../types'
+import {
+  invalidateCommunityLists,
+  invalidateMyCommunity,
+  invalidatePostDetail,
+} from '../../../utils/communityQueryKeys'
 
 export const MyCommentList = () => {
   const nickname = useUserStore((s) => s.nickname)
@@ -15,14 +21,16 @@ export const MyCommentList = () => {
 
   const { data: comments = [], isLoading } = useQuery({
     queryKey: ['community', 'my-comments', nickname],
-    queryFn: () => fetchMyComments(nickname!),
+    queryFn: () => fetchMyComments(),
     enabled: !!nickname,
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (commentId: number) => deleteComment(commentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community', 'my-comments', nickname] })
+    mutationFn: (comment: Comment) => deleteComment(comment.id),
+    onSuccess: (_, comment) => {
+      void invalidatePostDetail(queryClient, comment.postId)
+      void invalidateCommunityLists(queryClient)
+      void invalidateMyCommunity(queryClient)
       showToast('댓글이 삭제되었어요', 'info')
     },
     onError: () => showToast('댓글 삭제에 실패했습니다', 'error'),
@@ -59,7 +67,11 @@ export const MyCommentList = () => {
       {confirmCommentId !== null && (
         <ConfirmDialog
           message="댓글을 삭제하시겠습니까?"
-          onConfirm={() => { deleteMutation.mutate(confirmCommentId); setConfirmCommentId(null) }}
+          onConfirm={() => {
+            const comment = comments.find((item) => item.id === confirmCommentId)
+            if (comment) deleteMutation.mutate(comment)
+            setConfirmCommentId(null)
+          }}
           onCancel={() => setConfirmCommentId(null)}
         />
       )}

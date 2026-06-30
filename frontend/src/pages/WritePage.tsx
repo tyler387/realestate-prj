@@ -5,6 +5,7 @@ import { usePostStore } from '../stores/postStore'
 import { useUserStore } from '../stores/userStore'
 import { createPost } from '../services/communityService'
 import { apartmentBoards, boardLabelOf, boardsForScope } from '../constants/communityBoards'
+import { invalidateAfterPostCreate } from '../utils/communityQueryKeys'
 
 export const WritePage = () => {
   const navigate = useNavigate()
@@ -47,7 +48,7 @@ export const WritePage = () => {
         title: title.trim(),
         content: content.trim(),
       })
-      await queryClient.invalidateQueries({ queryKey: ['community', 'posts'] })
+      await invalidateAfterPostCreate(queryClient)
       navigate('/')
     } catch (error) {
       const message = error instanceof Error ? error.message : '게시글 등록에 실패했습니다.'

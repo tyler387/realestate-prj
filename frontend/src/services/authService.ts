@@ -17,8 +17,8 @@ export const tokenStorage = {
 }
 
 const authRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
-  // 紐⑤뱺 ?몄쬆 API ?붿껌?????⑥닔瑜?怨듯넻 ?ъ슜?쒕떎.
-  // ?ㅽ뙣 ???쒕쾭 硫붿떆吏瑜?理쒕???洹몃?濡??붾㈃???꾨떖???ъ슜?먭? ?댁쑀瑜??????덇쾶 ?쒕떎.
+  // 모든 인증 API 요청에서 fetch 처리를 공통으로 사용한다.
+  // 실패 시 서버 메시지를 최대한 그대로 전달해 사용자가 이유를 알 수 있게 한다.
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
@@ -29,7 +29,7 @@ const authRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
   if (response.status === 204) return undefined as T
   if (!response.ok) {
     const text = await response.text()
-    let message = '?붿껌???ㅽ뙣?덉뒿?덈떎.'
+    let message = '요청에 실패했습니다.'
     try {
       const json = JSON.parse(text)
       message = json.message || json.error || message
@@ -106,7 +106,7 @@ export const authApi = {
       body: JSON.stringify({ code, redirectUri }),
     }),
 
-  // ?꾩옱 鍮꾨?踰덊샇瑜?寃利앺븳 ????鍮꾨?踰덊샇濡?蹂寃?(JWT ?꾩슂)
+  // 현재 비밀번호를 검증한 뒤 새 비밀번호로 변경한다. (JWT 필요)
   changePassword: (currentPassword: string, newPassword: string) =>
     authRequest<void>('/api/auth/password', {
       method: 'PUT',
@@ -114,7 +114,7 @@ export const authApi = {
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
 
-  // 寃뚯떆湲쨌?볤????듬챸 泥섎━????怨꾩젙????젣 (JWT ?꾩슂)
+  // 게시글과 댓글을 익명 처리한 뒤 계정을 삭제한다. (JWT 필요)
   deleteAccount: () =>
     authRequest<void>('/api/auth/account', {
       method: 'DELETE',

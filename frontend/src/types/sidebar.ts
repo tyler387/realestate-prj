@@ -15,12 +15,14 @@ export type PopularPost = {
   title: string
   likeCount: number
   commentCount: number
+  createdAt?: string
 }
 
 export type MostCommentedPost = {
   postId: number
   title: string
   commentCount: number
+  createdAt?: string
 }
 
 export type PriceTrendData = {

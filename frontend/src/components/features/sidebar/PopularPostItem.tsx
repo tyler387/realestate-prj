@@ -10,9 +10,10 @@ export const PopularPostItem = ({ rank, post }: Props) => {
   const cleanedTitle = stripTrailingSerial(post.title)
 
   return (
-    <div
+    <button
+      type="button"
       onClick={() => navigate(`/post/${post.postId}`)}
-      className={`-mx-1 mb-1.5 flex cursor-pointer items-start gap-2 rounded-lg border-b border-gray-100 px-1 py-2.5 transition-colors last:mb-0 last:border-b-0 hover:bg-gray-50 ${
+      className={`-mx-1 mb-1.5 flex w-full cursor-pointer items-start gap-2 rounded-lg border-b border-gray-100 px-1 py-2.5 text-left transition-colors last:mb-0 last:border-b-0 hover:bg-gray-50 ${
         rank <= 3 ? 'border-l-2 border-l-blue-300 pl-2' : ''
       }`}
     >
@@ -40,9 +41,9 @@ export const PopularPostItem = ({ rank, post }: Props) => {
         <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
           <span>좋아요 {post.likeCount}</span>
           <span>댓글 {post.commentCount}</span>
-          <span>커뮤니티 인기</span>
+          <span>{post.createdAt ?? '커뮤니티 인기'}</span>
         </div>
       </div>
-    </div>
+    </button>
   )
 }

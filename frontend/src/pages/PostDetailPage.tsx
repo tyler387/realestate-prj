@@ -16,6 +16,13 @@ import {
   deleteComment,
   toggleLike,
 } from '../services/communityService'
+import {
+  communityQueryKeys,
+  invalidateCommunityLists,
+  invalidateCommunityStats,
+  invalidateMyCommunity,
+  invalidatePostDetail,
+} from '../utils/communityQueryKeys'
 
 export const PostDetailPage = () => {
   const { id } = useParams<{ id: string }>()
@@ -47,21 +54,30 @@ export const PostDetailPage = () => {
       queryClient.setQueryData<Post>(['community', 'post', postId, nickname], (prev) =>
         prev ? { ...prev, liked: data.liked, likeCount: data.likeCount } : prev
       )
+      void invalidateCommunityStats(queryClient)
+      void queryClient.invalidateQueries({ queryKey: communityQueryKeys.posts() })
+      void queryClient.invalidateQueries({ queryKey: communityQueryKeys.myPosts() })
     },
     onError: () => showToast('좋아요 처리에 실패했습니다', 'error'),
   })
 
   const commentMutation = useMutation({
     mutationFn: (content: string) => createComment(postId, content),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['community', 'comments', postId] }),
+    onSuccess: () => {
+      void invalidatePostDetail(queryClient, postId)
+      void invalidateCommunityLists(queryClient)
+      void invalidateMyCommunity(queryClient)
+    },
     onError: () => showToast('댓글 작성에 실패했습니다', 'error'),
   })
 
   const deletePostMutation = useMutation({
     mutationFn: () => deletePost(postId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community', 'posts'] })
+      queryClient.removeQueries({ queryKey: communityQueryKeys.post(postId) })
+      queryClient.removeQueries({ queryKey: communityQueryKeys.comments(postId) })
+      void invalidateCommunityLists(queryClient)
+      void invalidateMyCommunity(queryClient)
       showToast('게시글이 삭제되었어요', 'info')
       navigate(-1)
     },
@@ -70,8 +86,11 @@ export const PostDetailPage = () => {
 
   const deleteCommentMutation = useMutation({
     mutationFn: (commentId: number) => deleteComment(commentId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['community', 'comments', postId] }),
+    onSuccess: () => {
+      void invalidatePostDetail(queryClient, postId)
+      void invalidateCommunityLists(queryClient)
+      void invalidateMyCommunity(queryClient)
+    },
     onError: () => showToast('댓글 삭제에 실패했습니다', 'error'),
   })
 

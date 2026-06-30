@@ -43,6 +43,60 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
 
     List<CommunityPost> findByBoardScopeAndAptIdAndBoardCodeOrderByCreatedAtDesc(String boardScope, Long aptId, String boardCode);
 
+    @Query("""
+            SELECT p FROM CommunityPost p
+            WHERE p.boardScope = :boardScope
+              AND (:boardScope = 'GLOBAL' OR p.aptId = :aptId)
+              AND (:boardCode IS NULL OR p.boardCode = :boardCode)
+              AND (:keyword = ''
+                OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            ORDER BY p.createdAt DESC
+            """)
+    List<CommunityPost> searchLatest(
+            @Param("boardScope") String boardScope,
+            @Param("aptId") Long aptId,
+            @Param("boardCode") String boardCode,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT p FROM CommunityPost p
+            WHERE p.boardScope = :boardScope
+              AND (:boardScope = 'GLOBAL' OR p.aptId = :aptId)
+              AND (:boardCode IS NULL OR p.boardCode = :boardCode)
+              AND (:keyword = ''
+                OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            ORDER BY (p.likeCount * 2 + p.commentCount) DESC, p.createdAt DESC
+            """)
+    List<CommunityPost> searchPopular(
+            @Param("boardScope") String boardScope,
+            @Param("aptId") Long aptId,
+            @Param("boardCode") String boardCode,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT p FROM CommunityPost p
+            WHERE p.boardScope = :boardScope
+              AND (:boardScope = 'GLOBAL' OR p.aptId = :aptId)
+              AND (:boardCode IS NULL OR p.boardCode = :boardCode)
+              AND (:keyword = ''
+                OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            ORDER BY p.commentCount DESC, p.createdAt DESC
+            """)
+    List<CommunityPost> searchMostCommented(
+            @Param("boardScope") String boardScope,
+            @Param("aptId") Long aptId,
+            @Param("boardCode") String boardCode,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
     @Query(value = """
             SELECT p.*
             FROM posts p

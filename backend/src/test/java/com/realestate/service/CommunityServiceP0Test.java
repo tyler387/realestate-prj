@@ -26,12 +26,14 @@ import com.realestate.domain.repository.PostStatsRepository;
 import com.realestate.domain.repository.PostViewLogRepository;
 import com.realestate.web.dto.CommentDto;
 import com.realestate.web.dto.CommunityPostDto;
+import com.realestate.web.dto.CommunityPostPageDto;
 import com.realestate.web.dto.CreateCommentRequest;
 import com.realestate.web.dto.CreateCommunityPostRequest;
 import com.realestate.web.dto.LikeToggleResponse;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -41,12 +43,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -75,15 +80,50 @@ class CommunityServiceP0Test {
     @Test
     void getPosts_globalBlah_doesNotRequireAptId() {
         CommunityPost post = post(1L, null, "GLOBAL", "BLAH", "블라블라");
-        when(communityPostRepository.findByBoardScopeAndBoardCodeOrderByCreatedAtDesc("GLOBAL", "BLAH"))
+        when(communityPostRepository.searchLatest(eq("GLOBAL"), isNull(), eq("BLAH"), eq(""), any(Pageable.class)))
                 .thenReturn(List.of(post));
 
-        List<CommunityPostDto> result = communityService.getPosts("GLOBAL", null, "BLAH", null, "최신순");
+        CommunityPostPageDto result = communityService.getPosts("GLOBAL", null, "BLAH", null, "LATEST", null, 0, 20);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).aptId()).isNull();
-        assertThat(result.get(0).boardScope()).isEqualTo("GLOBAL");
-        assertThat(result.get(0).boardCode()).isEqualTo("BLAH");
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().get(0).aptId()).isNull();
+        assertThat(result.content().get(0).boardScope()).isEqualTo("GLOBAL");
+        assertThat(result.content().get(0).boardCode()).isEqualTo("BLAH");
+        assertThat(result.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void getPosts_searchKeyword_passesNormalizedKeywordToRepository() {
+        CommunityPost post = post(2L, null, "GLOBAL", "BLAH", "블라블라");
+        ReflectionTestUtils.setField(post, "title", "loan title");
+        when(communityPostRepository.searchLatest(eq("GLOBAL"), isNull(), eq("BLAH"), eq("loan"), any(Pageable.class)))
+                .thenReturn(List.of(post));
+
+        CommunityPostPageDto result = communityService.getPosts("GLOBAL", null, "BLAH", null, "LATEST", " loan ", 0, 20);
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.page()).isZero();
+        assertThat(result.size()).isEqualTo(20);
+        assertThat(result.hasNext()).isFalse();
+    }
+
+    @Test
+    void getPosts_fetchesOneExtraRowToCalculateHasNextWithoutCountQuery() {
+        List<CommunityPost> fetched = IntStream.rangeClosed(1, 21)
+                .mapToObj(id -> post((long) id, null, "GLOBAL", "BLAH", "블라블라"))
+                .toList();
+        when(communityPostRepository.searchLatest(eq("GLOBAL"), isNull(), eq("BLAH"), eq(""), any(Pageable.class)))
+                .thenReturn(fetched);
+
+        CommunityPostPageDto result = communityService.getPosts("GLOBAL", null, "BLAH", null, "LATEST", null, 0, 20);
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(communityPostRepository).searchLatest(eq("GLOBAL"), isNull(), eq("BLAH"), eq(""), pageableCaptor.capture());
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(21);
+        assertThat(result.content()).hasSize(20);
+        assertThat(result.hasNext()).isTrue();
+        assertThat(result.totalElements()).isEqualTo(21);
+        assertThat(result.totalPages()).isEqualTo(2);
     }
 
     @Test
@@ -132,34 +172,53 @@ class CommunityServiceP0Test {
     }
 
     @Test
-    void createPost_globalBlah_allowsAuthenticatedMemberWithoutApartmentVerification() {
-        User user = memberUser(12L, "member");
+    void createPost_keywordExtraction_filtersStopWordsAndNormalizesTokens() {
+        User user = verifiedUser(11L, "tester", 3100L, "래미안 원베일리");
         when(authentication.getPrincipal()).thenReturn(user);
         when(communityPostRepository.save(any(CommunityPost.class))).thenAnswer(invocation -> {
             CommunityPost saved = invocation.getArgument(0);
-            ReflectionTestUtils.setField(saved, "id", 101L);
+            ReflectionTestUtils.setField(saved, "id", 102L);
             ReflectionTestUtils.setField(saved, "createdAt", LocalDateTime.now());
             return saved;
         });
 
-        CommunityPostDto result = communityService.createPost(
-                new CreateCommunityPostRequest("GLOBAL", "BLAH", null, null, "hello title", "hello body"),
+        communityService.createPost(
+                new CreateCommunityPostRequest(
+                        "GLOBAL",
+                        "BLAH",
+                        null,
+                        null,
+                        "나는 대출 금리는 어떻게 되나요",
+                        "그리고 청약이 loan RATE 123 합니다"
+                ),
                 authentication
         );
 
-        ArgumentCaptor<CommunityPost> postCaptor = ArgumentCaptor.forClass(CommunityPost.class);
-        verify(communityPostRepository).save(postCaptor.capture());
-        CommunityPost saved = postCaptor.getValue();
-        assertThat(saved.getAptId()).isNull();
-        assertThat(saved.getBoardScope()).isEqualTo("GLOBAL");
-        assertThat(saved.getBoardCode()).isEqualTo("BLAH");
-        assertThat(saved.getAuthorNickname()).isEqualTo("member");
-        assertThat(saved.getAuthorUserId()).isEqualTo(12L);
-        assertThat(saved.getComplexName()).isEqualTo("전체 커뮤니티");
-        assertThat(saved.getAuthorVerifiedAptId()).isNull();
-        assertThat(saved.getAuthorVerifiedAptName()).isNull();
-        assertThat(saved.getAuthorVerificationLabel()).isNull();
-        assertThat(result.id()).isEqualTo(101L);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Iterable<KeywordLog>> keywordCaptor =
+                ArgumentCaptor.forClass((Class) Iterable.class);
+        verify(keywordLogRepository).saveAll(keywordCaptor.capture());
+
+        assertThat(keywordCaptor.getValue())
+                .extracting(KeywordLog::getKeyword)
+                .contains("대출", "금리", "청약", "loan", "rate")
+                .doesNotContain("나는", "금리는", "어떻게", "그리고", "청약이", "123", "합니다");
+    }
+
+    @Test
+    void createPost_globalBlah_rejectsAuthenticatedMemberWithoutApartmentVerification() {
+        User user = memberUser(12L, "member");
+        when(authentication.getPrincipal()).thenReturn(user);
+
+        assertThatThrownBy(() -> communityService.createPost(
+                new CreateCommunityPostRequest("GLOBAL", "BLAH", null, null, "hello title", "hello body"),
+                authentication
+        ))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode.value")
+                .isEqualTo(403);
+
+        verifyNoInteractions(communityPostRepository, keywordLogRepository, postStatsRepository);
     }
 
     @Test
@@ -230,49 +289,65 @@ class CommunityServiceP0Test {
     @Test
     void getPosts_apartmentAll_usesApartmentScopeAndAptId() {
         CommunityPost post = post(40L, 3100L, "APARTMENT", "APT_FREE", "자유");
-        when(communityPostRepository.findByBoardScopeAndAptIdOrderByCreatedAtDesc("APARTMENT", 3100L))
+        when(communityPostRepository.searchLatest(eq("APARTMENT"), eq(3100L), isNull(), eq(""), any(Pageable.class)))
                 .thenReturn(List.of(post));
 
-        List<CommunityPostDto> result = communityService.getPosts("APARTMENT", 3100L, "APT_ALL", null, "최신순");
+        CommunityPostPageDto result = communityService.getPosts("APARTMENT", 3100L, "APT_ALL", null, "LATEST", null, 0, 20);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).aptId()).isEqualTo(3100L);
-        assertThat(result.get(0).boardScope()).isEqualTo("APARTMENT");
-        verify(communityPostRepository).findByBoardScopeAndAptIdOrderByCreatedAtDesc("APARTMENT", 3100L);
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().get(0).aptId()).isEqualTo(3100L);
+        assertThat(result.content().get(0).boardScope()).isEqualTo("APARTMENT");
+        verify(communityPostRepository).searchLatest(eq("APARTMENT"), eq(3100L), isNull(), eq(""), any(Pageable.class));
     }
 
     @Test
     void getPosts_commentSort_ordersByCommentCountThenCreatedAt() {
-        CommunityPost low = post(70L, null, "GLOBAL", "BLAH", "블라블라");
-        ReflectionTestUtils.setField(low, "commentCount", 1);
-        ReflectionTestUtils.setField(low, "createdAt", LocalDateTime.now());
         CommunityPost high = post(71L, null, "GLOBAL", "BLAH", "블라블라");
         ReflectionTestUtils.setField(high, "commentCount", 5);
         ReflectionTestUtils.setField(high, "createdAt", LocalDateTime.now().minusDays(1));
-        when(communityPostRepository.findByBoardScopeAndBoardCodeOrderByCreatedAtDesc("GLOBAL", "BLAH"))
-                .thenReturn(List.of(low, high));
+        CommunityPost low = post(70L, null, "GLOBAL", "BLAH", "블라블라");
+        ReflectionTestUtils.setField(low, "commentCount", 1);
+        ReflectionTestUtils.setField(low, "createdAt", LocalDateTime.now());
+        when(communityPostRepository.searchMostCommented(eq("GLOBAL"), isNull(), eq("BLAH"), eq(""), any(Pageable.class)))
+                .thenReturn(List.of(high, low));
 
-        List<CommunityPostDto> result = communityService.getPosts("GLOBAL", null, "BLAH", null, "댓글순");
+        CommunityPostPageDto result = communityService.getPosts("GLOBAL", null, "BLAH", null, "COMMENT", null, 0, 20);
 
-        assertThat(result).extracting(CommunityPostDto::id).containsExactly(71L, 70L);
+        assertThat(result.content()).extracting(CommunityPostDto::id).containsExactly(71L, 70L);
     }
 
     @Test
     void getMyComments_includesPostBoardContextForMyPage() {
+        User user = verifiedUser(11L, "tester", 3100L, "래미안 원베일리");
         Comment comment = Comment.create(80L, "tester", "댓글입니다", 3100L, "래미안 원베일리");
         ReflectionTestUtils.setField(comment, "id", 90L);
         ReflectionTestUtils.setField(comment, "createdAt", LocalDateTime.now());
         CommunityPost post = post(80L, null, "GLOBAL", "BLAH", "블라블라");
+        when(authentication.getPrincipal()).thenReturn(user);
         when(commentRepository.findByAuthorNicknameOrderByCreatedAtDesc("tester")).thenReturn(List.of(comment));
         when(communityPostRepository.findById(80L)).thenReturn(Optional.of(post));
 
-        List<CommentDto> result = communityService.getMyComments("tester");
+        List<CommentDto> result = communityService.getMyComments(authentication);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).postTitle()).isEqualTo("제목");
         assertThat(result.get(0).postBoardScope()).isEqualTo("GLOBAL");
         assertThat(result.get(0).postBoardCode()).isEqualTo("BLAH");
         assertThat(result.get(0).postCategory()).isEqualTo("블라블라");
+    }
+
+    @Test
+    void getMyPosts_usesAuthenticatedPrincipalNickname() {
+        User user = verifiedUser(11L, "tester", 3100L, "래미안 원베일리");
+        CommunityPost post = post(81L, null, "GLOBAL", "BLAH", "블라블라");
+        when(authentication.getPrincipal()).thenReturn(user);
+        when(communityPostRepository.findByAuthorNicknameOrderByCreatedAtDesc("tester")).thenReturn(List.of(post));
+
+        List<CommunityPostDto> result = communityService.getMyPosts(authentication);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).id()).isEqualTo(81L);
+        verify(communityPostRepository).findByAuthorNicknameOrderByCreatedAtDesc("tester");
     }
 
     @Test

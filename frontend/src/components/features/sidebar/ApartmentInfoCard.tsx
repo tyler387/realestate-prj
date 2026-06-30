@@ -2,7 +2,7 @@
 import { useApartmentSummary } from '../../../hooks/useSidebarData'
 import { formatPrice } from '../../../utils/formatPrice'
 import { SidebarCard, CardTitle } from './SidebarCard'
-import { ApartmentInfoCardSkeleton, ErrorMessage } from './SidebarSkeleton'
+import { ApartmentInfoCardSkeleton, ErrorMessage, SidebarEmptyState } from './SidebarSkeleton'
 
 const KpiItem = ({ label, value }: { label: string; value: string }) => (
   <div className="rounded-lg border border-gray-100 bg-gray-50 px-2.5 py-2">
@@ -30,6 +30,7 @@ export const ApartmentInfoCard = ({ aptId }: { aptId: string }) => {
     <SidebarCard className="min-h-[220px] p-4 lg:p-5">
       <CardTitle>지역 정보</CardTitle>
 
+      {!aptId && <SidebarEmptyState text="아파트를 선택하면 지역 정보가 표시됩니다" />}
       {isLoading && <ApartmentInfoCardSkeleton />}
       {isError && <ErrorMessage text="아파트 정보를 불러올 수 없습니다" />}
 

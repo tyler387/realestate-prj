@@ -3,6 +3,7 @@ package com.realestate.web.controller;
 import com.realestate.service.CommunityService;
 import com.realestate.web.dto.CommentDto;
 import com.realestate.web.dto.CommunityPostDto;
+import com.realestate.web.dto.CommunityPostPageDto;
 import com.realestate.web.dto.CreateCommentRequest;
 import com.realestate.web.dto.CreateCommunityPostRequest;
 import com.realestate.web.dto.LikeToggleResponse;
@@ -28,14 +29,17 @@ public class CommunityController {
     private final CommunityService communityService;
 
     @GetMapping("/posts")
-    public List<CommunityPostDto> getPosts(
+    public CommunityPostPageDto getPosts(
             @RequestParam(required = false) String scope,
             @RequestParam(required = false) Long aptId,
             @RequestParam(required = false) String boardCode,
             @RequestParam(required = false) String category,
-            @RequestParam(required = false, defaultValue = "최신순") String sortType
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "20") int size,
+            @RequestParam(required = false, defaultValue = "LATEST") String sortType
     ) {
-        return communityService.getPosts(scope, aptId, boardCode, category, sortType);
+        return communityService.getPosts(scope, aptId, boardCode, category, sortType, q, page, size);
     }
 
     @GetMapping("/posts/{id}")
@@ -115,12 +119,12 @@ public class CommunityController {
     }
 
     @GetMapping("/my/posts")
-    public List<CommunityPostDto> getMyPosts(@RequestParam String nickname) {
-        return communityService.getMyPosts(nickname);
+    public List<CommunityPostDto> getMyPosts(Authentication authentication) {
+        return communityService.getMyPosts(authentication);
     }
 
     @GetMapping("/my/comments")
-    public List<CommentDto> getMyComments(@RequestParam String nickname) {
-        return communityService.getMyComments(nickname);
+    public List<CommentDto> getMyComments(Authentication authentication) {
+        return communityService.getMyComments(authentication);
     }
 }

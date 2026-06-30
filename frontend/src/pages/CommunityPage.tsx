@@ -1,5 +1,5 @@
 ﻿import { useEffect, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { CategoryFilter } from '../components/features/community/CategoryFilter'
 import { SortDropdown } from '../components/features/community/SortDropdown'
@@ -17,7 +17,7 @@ import { PostCardSkeleton } from '../components/common/Skeleton'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
 import { usePostStore } from '../stores/postStore'
-import { fetchPosts } from '../services/communityService'
+import { fetchPostPage } from '../services/communityService'
 import {
   DEFAULT_COMMUNITY_SCOPE,
   DEFAULT_SORT_TYPE,
@@ -27,7 +27,9 @@ import {
   isSortType,
 } from '../constants/communityBoards'
 import { buildCommunitySearchParams } from '../utils/communityUrl'
-import { buildCommunitySearchContextKey, filterPostsByKeyword } from '../utils/communitySearch'
+import { buildCommunitySearchContextKey } from '../utils/communitySearch'
+
+const COMMUNITY_POST_PAGE_SIZE = 20
 
 const toPositiveNumber = (value: string | null) => {
   if (!value) return null
@@ -157,14 +159,24 @@ export const CommunityPage = () => {
     }
   }, [resetCommunityFilters, searchContextKey])
 
-  const { data: posts = [], isLoading, isError } = useQuery({
-    queryKey: ['community', 'posts', scope, activeAptId, boardCode, sortType],
-    queryFn: () => fetchPosts(scope, activeAptId, boardCode, sortType),
+  const {
+    data: postPages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useInfiniteQuery({
+    queryKey: ['community', 'posts', scope, activeAptId, boardCode, sortType, searchKeyword],
+    queryFn: ({ pageParam }) =>
+      fetchPostPage(scope, activeAptId, boardCode, sortType, searchKeyword, pageParam, COMMUNITY_POST_PAGE_SIZE),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.hasNext ? lastPage.page + 1 : undefined,
     enabled: scope === 'GLOBAL' || activeAptId != null,
     staleTime: 1000 * 60 * 5,
   })
 
-  const filteredPosts = filterPostsByKeyword(posts, searchKeyword)
+  const posts = postPages?.pages.flatMap((page) => page.content) ?? []
 
   const renderBanner = () => {
     if (scope === 'APARTMENT' && activeAptId == null) {
@@ -180,7 +192,7 @@ export const CommunityPage = () => {
     if (scope === 'APARTMENT' && activeAptId == null) return null
     if (isLoading) return <PostCardSkeleton />
     if (isError) return <EmptyState icon="⚠️" title="데이터를 불러올 수 없습니다" />
-    if (filteredPosts.length === 0) {
+    if (posts.length === 0) {
       return (
         <EmptyState
           icon="📭"
@@ -188,7 +200,23 @@ export const CommunityPage = () => {
         />
       )
     }
-    return <PostList posts={filteredPosts} />
+    return (
+      <>
+        <PostList posts={posts} />
+        {hasNextPage && (
+          <div className="px-4 py-4">
+            <button
+              type="button"
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="h-11 w-full rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isFetchingNextPage ? '불러오는 중...' : '더보기'}
+            </button>
+          </div>
+        )}
+      </>
+    )
   }
 
   const aptId = activeAptId != null ? String(activeAptId) : ''

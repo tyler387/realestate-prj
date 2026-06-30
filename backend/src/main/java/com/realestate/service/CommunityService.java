@@ -15,15 +15,17 @@ import com.realestate.domain.repository.PostStatsRepository;
 import com.realestate.domain.repository.PostViewLogRepository;
 import com.realestate.web.dto.CommentDto;
 import com.realestate.web.dto.CommunityPostDto;
+import com.realestate.web.dto.CommunityPostPageDto;
 import com.realestate.web.dto.CreateCommentRequest;
 import com.realestate.web.dto.CreateCommunityPostRequest;
 import com.realestate.web.dto.LikeToggleResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -37,6 +39,23 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class CommunityService {
 
+    private static final Set<String> NORMALIZED_STOP_WORDS = Set.of(
+            "이", "가", "을", "를", "은", "는", "의", "에", "에서", "와", "과", "도", "로", "으로",
+            "하다", "있다", "없다", "되다", "것", "수", "그", "저", "이것", "저것", "어떻게",
+            "어디", "누가", "왜", "언제", "얼마", "어느", "그런데", "그리고", "하지만", "그러나",
+            "너무", "정말", "진짜", "좀", "더", "같은", "같아요", "같습니다", "입니다", "합니다", "아요",
+            "있나요", "있어요", "계신가요", "주세요", "분들", "해요", "했어요", "인가요", "해주세요",
+            "제가", "저는", "나는", "우리", "그냥", "이거", "저거", "그거", "여기", "저기", "거기",
+            "오늘", "어제", "내일", "이번", "저번", "다음", "요즘", "최근", "관련", "문의", "질문",
+            "내용", "사람", "드립니다", "아시는분", "아시는", "궁금합니다",
+            "the", "and", "for", "with", "from", "this", "that", "have", "are", "was", "were"
+    );
+    private static final List<String> NORMALIZED_KOREAN_SUFFIXES = List.of(
+            "입니다", "합니다", "됩니다", "했어요", "네요", "어요", "아요", "나요", "니까", "는데", "지만",
+            "으로", "에서", "에게", "한테", "까지", "부터", "보다", "처럼", "하고", "이랑",
+            "은", "는", "이", "가", "을", "를", "에", "의", "도", "만", "로", "와", "과", "랑"
+    );
+
     private static final String CATEGORY_ALL = "전체";
     private static final String SORT_POPULAR = "인기순";
     private static final String SORT_COMMENT = "댓글순";
@@ -44,13 +63,8 @@ public class CommunityService {
     private static final String SCOPE_APARTMENT = "APARTMENT";
     private static final String BOARD_GLOBAL_DEFAULT = "BLAH";
     private static final String BOARD_APARTMENT_ALL = "APT_ALL";
-    private static final List<String> STOP_WORDS = List.of(
-            "이", "가", "을", "를", "은", "는", "의", "에", "에서", "와", "과", "도", "로", "으로",
-            "하다", "있다", "없다", "되다", "것", "수", "그", "저", "이것", "저것", "어떻게",
-            "어디", "누가", "왜", "언제", "얼마", "어느", "그런데", "그리고", "하지만", "그러나",
-            "너무", "정말", "진짜", "좀", "더", "같은", "같아요", "같습니다", "입니다", "합니다", "아요",
-            "있나요", "있어요", "계신가요", "주세요", "분들", "해요", "했어요", "인가요", "해주세요"
-    );
+    private static final Pattern KEYWORD_SPLIT_PATTERN = Pattern.compile("[^\\p{IsHangul}A-Za-z0-9]+");
+    private static final Pattern NUMERIC_PATTERN = Pattern.compile("\\d+");
 
     private final CommunityPostRepository communityPostRepository;
     private final PostStatsRepository postStatsRepository;
@@ -61,41 +75,52 @@ public class CommunityService {
     private final PostLikeLogRepository postLikeLogRepository;
 
     @Transactional(readOnly = true)
-    public List<CommunityPostDto> getPosts(String scope, Long aptId, String boardCode, String category, String sortType) {
+    public CommunityPostPageDto getPosts(
+            String scope,
+            Long aptId,
+            String boardCode,
+            String category,
+            String sortType,
+            String keyword,
+            int page,
+            int size
+    ) {
         String normalizedScope = normalizeScope(scope, aptId);
         String normalizedCategory = category == null ? "" : category.trim();
         String normalizedBoardCode = resolveBoardCodeFilter(normalizedScope, boardCode, normalizedCategory);
         String normalizedSort = sortType == null ? "" : sortType.trim();
+        int normalizedPage = normalizePage(page);
+        int normalizedSize = normalizePageSize(size);
+        String normalizedKeyword = normalizeSearchKeyword(keyword);
 
-        List<CommunityPost> posts;
-        if (SCOPE_GLOBAL.equals(normalizedScope)) {
-            posts = isBoardAll(normalizedBoardCode)
-                    ? communityPostRepository.findByBoardScopeOrderByCreatedAtDesc(SCOPE_GLOBAL)
-                    : communityPostRepository.findByBoardScopeAndBoardCodeOrderByCreatedAtDesc(SCOPE_GLOBAL, normalizedBoardCode);
-        } else {
+        if (SCOPE_APARTMENT.equals(normalizedScope)) {
             validateAptId(aptId);
-            posts = isBoardAll(normalizedBoardCode)
-                    ? communityPostRepository.findByBoardScopeAndAptIdOrderByCreatedAtDesc(SCOPE_APARTMENT, aptId)
-                    : communityPostRepository.findByBoardScopeAndAptIdAndBoardCodeOrderByCreatedAtDesc(SCOPE_APARTMENT, aptId, normalizedBoardCode);
         }
 
-        if (SORT_POPULAR.equals(normalizedSort)) {
-            posts = posts.stream()
-                    .sorted(Comparator
-                            .comparingInt((CommunityPost post) -> post.getLikeCount() * 2 + post.getCommentCount())
-                            .reversed()
-                            .thenComparing(CommunityPost::getCreatedAt, Comparator.reverseOrder()))
-                    .toList();
-        } else if (SORT_COMMENT.equals(normalizedSort)) {
-            posts = posts.stream()
-                    .sorted(Comparator
-                            .comparingInt(CommunityPost::getCommentCount)
-                            .reversed()
-                            .thenComparing(CommunityPost::getCreatedAt, Comparator.reverseOrder()))
-                    .toList();
-        }
+        PageRequest pageRequest = PageRequest.of(normalizedPage, normalizedSize + 1);
+        List<CommunityPost> posts = switch (resolveSortCode(normalizedSort)) {
+            case "POPULAR" -> communityPostRepository.searchPopular(
+                    normalizedScope, aptId, normalizedBoardCode, normalizedKeyword, pageRequest);
+            case "COMMENT" -> communityPostRepository.searchMostCommented(
+                    normalizedScope, aptId, normalizedBoardCode, normalizedKeyword, pageRequest);
+            default -> communityPostRepository.searchLatest(
+                    normalizedScope, aptId, normalizedBoardCode, normalizedKeyword, pageRequest);
+        };
+        boolean hasNext = posts.size() > normalizedSize;
+        List<CommunityPost> pageContent = hasNext ? posts.subList(0, normalizedSize) : posts;
+        long minimumTotalElements = (long) normalizedPage * normalizedSize + pageContent.size() + (hasNext ? 1 : 0);
+        int totalPages = hasNext
+                ? normalizedPage + 2
+                : pageContent.isEmpty() && normalizedPage == 0 ? 0 : normalizedPage + 1;
 
-        return posts.stream().map(this::toDto).toList();
+        return new CommunityPostPageDto(
+                pageContent.stream().map(this::toDto).toList(),
+                normalizedPage,
+                normalizedSize,
+                minimumTotalElements,
+                totalPages,
+                hasNext
+        );
     }
 
     // 조회 시 view_log 기록 (PRD §11.2)
@@ -112,19 +137,19 @@ public class CommunityService {
     // 작성 시 keyword_logs 기록 (PRD §11.4)
     @Transactional
     public CommunityPostDto createPost(CreateCommunityPostRequest request, Authentication authentication) {
-        User user = requireAuthenticatedUser(authentication);
+        User user = requireVerifiedUserNormalized(authentication);
         validateCreateRequest(request, user);
         Long requestedAptId = firstNonNull(request.aptId(), user.getApartmentId());
         String scope = normalizeScope(request.scope(), requestedAptId);
-        if (SCOPE_APARTMENT.equals(scope)) {
-            requireVerifiedUser(user);
-        }
-        String boardCode = resolveBoardCodeForCreate(scope, request.boardCode(), request.category());
-        String category = resolveCategoryLabel(scope, boardCode, request.category());
+        String boardCode = resolveBoardCodeForCreateNormalized(scope, request.boardCode(), request.category());
+        String category = resolveCategoryLabelNormalized(scope, boardCode, request.category());
         Long aptId = SCOPE_APARTMENT.equals(scope) ? requestedAptId : null;
         Long verifiedAptId = isVerifiedUser(user) ? user.getApartmentId() : null;
         String verifiedAptName = isVerifiedUser(user) ? user.getApartmentName() : null;
         String verificationLabel = isBlank(verifiedAptName) ? null : "아파트 인증: " + verifiedAptName.trim();
+        if (!isBlank(verifiedAptName)) {
+            verificationLabel = "아파트 인증: " + verifiedAptName.trim();
+        }
         CommunityPost created = communityPostRepository.save(
                 CommunityPost.create(
                         aptId,
@@ -225,7 +250,7 @@ public class CommunityService {
     // 댓글 작성
     @Transactional
     public CommentDto createComment(Long postId, CreateCommentRequest request, Authentication authentication) {
-        User user = requireVerifiedUser(authentication);
+        User user = requireVerifiedUserNormalized(authentication);
         CommunityPost post = communityPostRepository.findById(postId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
         if (request == null || isBlank(request.content())) {
@@ -271,7 +296,7 @@ public class CommunityService {
     // 좋아요 토글
     @Transactional
     public LikeToggleResponse toggleLike(Long postId, Authentication authentication) {
-        User user = requireVerifiedUser(authentication);
+        User user = requireVerifiedUserNormalized(authentication);
         CommunityPost post = communityPostRepository.findById(postId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
         String authorNickname = user.getNickname();
@@ -291,21 +316,17 @@ public class CommunityService {
 
     // 내가 쓴 게시글
     @Transactional(readOnly = true)
-    public List<CommunityPostDto> getMyPosts(String authorNickname) {
-        if (isBlank(authorNickname)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authorNickname is required");
-        }
-        return communityPostRepository.findByAuthorNicknameOrderByCreatedAtDesc(authorNickname)
+    public List<CommunityPostDto> getMyPosts(Authentication authentication) {
+        User user = requireAuthenticatedUser(authentication);
+        return communityPostRepository.findByAuthorNicknameOrderByCreatedAtDesc(user.getNickname())
                 .stream().map(this::toDto).toList();
     }
 
     // 내가 쓴 댓글
     @Transactional(readOnly = true)
-    public List<CommentDto> getMyComments(String authorNickname) {
-        if (isBlank(authorNickname)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "authorNickname is required");
-        }
-        return commentRepository.findByAuthorNicknameOrderByCreatedAtDesc(authorNickname)
+    public List<CommentDto> getMyComments(Authentication authentication) {
+        User user = requireAuthenticatedUser(authentication);
+        return commentRepository.findByAuthorNicknameOrderByCreatedAtDesc(user.getNickname())
                 .stream().map(comment -> {
                     CommunityPost post = communityPostRepository.findById(comment.getPostId()).orElse(null);
                     return toCommentDto(comment, post);
@@ -330,7 +351,7 @@ public class CommunityService {
                 comment.getAuthorAptId(),
                 comment.getAuthorAptName(),
                 comment.getContent(),
-                toRelativeTime(comment.getCreatedAt())
+                toRelativeTimeNormalized(comment.getCreatedAt())
         );
     }
 
@@ -352,7 +373,7 @@ public class CommunityService {
                 post.getAuthorVerifiedAptId(),
                 post.getAuthorVerifiedAptName(),
                 post.getAuthorVerificationLabel(),
-                toRelativeTime(post.getCreatedAt()),
+                toRelativeTimeNormalized(post.getCreatedAt()),
                 post.getLikeCount(),
                 post.getCommentCount(),
                 liked
@@ -361,9 +382,9 @@ public class CommunityService {
 
     // title + content에서 키워드 추출 (PRD §11.4 KeywordExtractor 로직)
     private List<String> extractKeywords(String title, String content) {
-        return Arrays.stream((title + " " + content).split("\\s+"))
-                .map(w -> w.replaceAll("[^가-힣a-zA-Z0-9]", ""))
-                .filter(w -> w.length() >= 2 && w.length() <= 50 && !STOP_WORDS.contains(w))
+        return KEYWORD_SPLIT_PATTERN.splitAsStream(firstNonBlank(title, "") + " " + firstNonBlank(content, ""))
+                .map(this::normalizeKeywordTokenNormalized)
+                .filter(keyword -> !keyword.isBlank())
                 .distinct()
                 .toList();
     }
@@ -372,9 +393,7 @@ public class CommunityService {
     private List<String> extractKeywordsFromPosts(String scope, Long aptId, String boardCode) {
         List<CommunityPost> posts = findPostsForKeywordFallback(scope, aptId, boardCode);
         Map<String, Long> wordCount = posts.stream()
-                .flatMap(post -> Arrays.stream((post.getTitle() + " " + post.getContent()).split("[\\s,!?.]+"))
-                        .map(w -> w.replaceAll("[^가-힣a-zA-Z0-9]", ""))
-                        .filter(w -> w.length() >= 2 && !STOP_WORDS.contains(w)))
+                .flatMap(post -> extractKeywords(post.getTitle(), post.getContent()).stream())
                 .collect(Collectors.groupingBy(w -> w, Collectors.counting()));
 
         return wordCount.entrySet().stream()
@@ -399,7 +418,31 @@ public class CommunityService {
         return posts.stream().limit(50).toList();
     }
 
-    private String toRelativeTime(LocalDateTime createdAt) {
+    private int normalizePage(int page) {
+        return Math.max(page, 0);
+    }
+
+    private int normalizePageSize(int size) {
+        if (size < 1) return 20;
+        return Math.min(size, 50);
+    }
+
+    private String normalizeSearchKeyword(String keyword) {
+        if (isBlank(keyword)) return "";
+        return keyword.trim();
+    }
+
+    private String resolveSortCode(String sortType) {
+        if ("POPULAR".equalsIgnoreCase(sortType) || "인기순".equals(sortType) || SORT_POPULAR.equals(sortType)) {
+            return "POPULAR";
+        }
+        if ("COMMENT".equalsIgnoreCase(sortType) || "댓글순".equals(sortType) || SORT_COMMENT.equals(sortType)) {
+            return "COMMENT";
+        }
+        return "LATEST";
+    }
+
+    private String toRelativeTimeNormalized(LocalDateTime createdAt) {
         Duration duration = Duration.between(createdAt, LocalDateTime.now());
         long minutes = Math.max(duration.toMinutes(), 0);
         if (minutes < 1) return "방금 전";
@@ -409,31 +452,11 @@ public class CommunityService {
         return hours / 24 + "일 전";
     }
 
-    private boolean isCategoryAll(String category) {
-        return category.isBlank() || CATEGORY_ALL.equals(category);
+    private boolean isCategoryAllNormalized(String category) {
+        return category.isBlank() || "전체".equals(category);
     }
 
-    private boolean isBoardAll(String boardCode) {
-        return boardCode == null || boardCode.isBlank() || BOARD_APARTMENT_ALL.equals(boardCode);
-    }
-
-    private String normalizeScope(String scope, Long aptId) {
-        if (SCOPE_GLOBAL.equals(scope)) return SCOPE_GLOBAL;
-        if (SCOPE_APARTMENT.equals(scope)) return SCOPE_APARTMENT;
-        return aptId == null ? SCOPE_GLOBAL : SCOPE_APARTMENT;
-    }
-
-    private String resolveBoardCodeFilter(String scope, String boardCode, String category) {
-        if (!isBlank(boardCode)) {
-            String normalizedBoardCode = boardCode.trim();
-            return isBoardAll(normalizedBoardCode) ? null : normalizedBoardCode;
-        }
-        String normalizedCategory = category == null ? "" : category.trim();
-        if (isCategoryAll(normalizedCategory)) return null;
-        return resolveBoardCodeForCreate(scope, null, normalizedCategory);
-    }
-
-    private String resolveBoardCodeForCreate(String scope, String boardCode, String category) {
+    private String resolveBoardCodeForCreateNormalized(String scope, String boardCode, String category) {
         if (!isBlank(boardCode)) return boardCode.trim();
         String normalizedCategory = category == null ? "" : category.trim();
         if (SCOPE_GLOBAL.equals(scope)) {
@@ -456,8 +479,8 @@ public class CommunityService {
         };
     }
 
-    private String resolveCategoryLabel(String scope, String boardCode, String fallback) {
-        if (!isBlank(fallback) && !CATEGORY_ALL.equals(fallback.trim())) return fallback.trim();
+    private String resolveCategoryLabelNormalized(String scope, String boardCode, String fallback) {
+        if (!isBlank(fallback) && !"전체".equals(fallback.trim())) return fallback.trim();
         if (SCOPE_GLOBAL.equals(scope)) {
             return switch (boardCode) {
                 case "REAL_ESTATE" -> "부동산";
@@ -475,6 +498,46 @@ public class CommunityService {
             case "APT_ALL", "APT_FREE" -> "자유";
             default -> "자유";
         };
+    }
+
+    private String normalizeKeywordTokenNormalized(String rawToken) {
+        if (rawToken == null) return "";
+        String keyword = rawToken.trim().toLowerCase(Locale.ROOT);
+        if (keyword.isBlank() || NUMERIC_PATTERN.matcher(keyword).matches()) return "";
+
+        for (String suffix : NORMALIZED_KOREAN_SUFFIXES) {
+            if (keyword.length() - suffix.length() >= 2 && keyword.endsWith(suffix)) {
+                keyword = keyword.substring(0, keyword.length() - suffix.length());
+                break;
+            }
+        }
+        if (keyword.length() < 2 || keyword.length() > 50) return "";
+        if (NORMALIZED_STOP_WORDS.contains(keyword)) return "";
+        return keyword;
+    }
+
+    private boolean isCategoryAll(String category) {
+        return isCategoryAllNormalized(category);
+    }
+
+    private boolean isBoardAll(String boardCode) {
+        return boardCode == null || boardCode.isBlank() || BOARD_APARTMENT_ALL.equals(boardCode);
+    }
+
+    private String normalizeScope(String scope, Long aptId) {
+        if (SCOPE_GLOBAL.equals(scope)) return SCOPE_GLOBAL;
+        if (SCOPE_APARTMENT.equals(scope)) return SCOPE_APARTMENT;
+        return aptId == null ? SCOPE_GLOBAL : SCOPE_APARTMENT;
+    }
+
+    private String resolveBoardCodeFilter(String scope, String boardCode, String category) {
+        if (!isBlank(boardCode)) {
+            String normalizedBoardCode = boardCode.trim();
+            return isBoardAll(normalizedBoardCode) ? null : normalizedBoardCode;
+        }
+        String normalizedCategory = category == null ? "" : category.trim();
+        if (isCategoryAll(normalizedCategory)) return null;
+        return resolveBoardCodeForCreateNormalized(scope, null, normalizedCategory);
     }
 
     private String firstNonBlank(String... values) {
@@ -501,7 +564,7 @@ public class CommunityService {
         }
     }
 
-    private User requireVerifiedUser(Authentication authentication) {
+    private User requireVerifiedUserNormalized(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login is required");
         }
@@ -519,12 +582,6 @@ public class CommunityService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login is required");
         }
         return user;
-    }
-
-    private void requireVerifiedUser(User user) {
-        if (!isVerifiedUser(user)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Apartment verification is required");
-        }
     }
 
     private boolean isVerifiedUser(User user) {

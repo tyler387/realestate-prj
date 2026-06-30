@@ -1,4 +1,4 @@
-import type { BoardCode, Comment, CommunityScope, Post } from '../types'
+import type { BoardCode, Comment, CommunityScope, Post, PostPage } from '../types'
 import { tokenStorage } from './authService'
 import { toCommunitySearchQueryParam } from '../utils/communitySearch'
 
@@ -35,6 +35,23 @@ const requestJson = async <T>(path: string, init?: RequestInit): Promise<T> => {
     throw new Error(await resolveErrorMessage(response, '커뮤니티 API 요청에 실패했습니다.'))
   }
   return (await response.json()) as T
+}
+
+const toPosts = (data: Post[] | PostPage): Post[] => {
+  if (Array.isArray(data)) return data
+  return data.content
+}
+
+const toPostPage = (data: Post[] | PostPage, page: number, size: number): PostPage => {
+  if (!Array.isArray(data)) return data
+  return {
+    content: data,
+    page,
+    size,
+    totalElements: data.length,
+    totalPages: data.length === 0 ? 0 : 1,
+    hasNext: false,
+  }
 }
 
 const requestVoid = async (path: string, init?: RequestInit): Promise<void> => {
@@ -75,19 +92,57 @@ export const fetchPosts = async (
   boardCode: BoardCode,
   sortType: string,
   searchKeyword?: string | null,
+  page = 0,
+  size = 20,
 ): Promise<Post[]> => {
-  if (scope === 'APARTMENT' && aptId == null) return []
+  if (scope === 'APARTMENT' && aptId == null) {
+    return []
+  }
   const params = new URLSearchParams({
     scope,
     boardCode,
     sortType,
+    page: String(page),
+    size: String(size),
   })
   if (scope === 'APARTMENT' && aptId != null) params.set('aptId', String(aptId))
-  // Backend search is not enabled yet. Keep q wiring here so the page can move
-  // from client filtering to server filtering without changing URL/state shape.
   const q = toCommunitySearchQueryParam(searchKeyword)
   if (q) params.set('q', q)
-  return requestJson<Post[]>(`/api/community/posts?${params.toString()}`)
+  const data = await requestJson<Post[] | PostPage>(`/api/community/posts?${params.toString()}`)
+  return toPosts(data)
+}
+
+export const fetchPostPage = async (
+  scope: CommunityScope,
+  aptId: number | null,
+  boardCode: BoardCode,
+  sortType: string,
+  searchKeyword?: string | null,
+  page = 0,
+  size = 20,
+): Promise<PostPage> => {
+  if (scope === 'APARTMENT' && aptId == null) {
+    return {
+      content: [],
+      page,
+      size,
+      totalElements: 0,
+      totalPages: 0,
+      hasNext: false,
+    }
+  }
+  const params = new URLSearchParams({
+    scope,
+    boardCode,
+    sortType,
+    page: String(page),
+    size: String(size),
+  })
+  if (scope === 'APARTMENT' && aptId != null) params.set('aptId', String(aptId))
+  const q = toCommunitySearchQueryParam(searchKeyword)
+  if (q) params.set('q', q)
+  const data = await requestJson<Post[] | PostPage>(`/api/community/posts?${params.toString()}`)
+  return toPostPage(data, page, size)
 }
 
 export const fetchPostById = async (id: number, nickname?: string | null): Promise<Post> => {
@@ -126,8 +181,8 @@ export const toggleLike = async (postId: number): Promise<LikeToggleResponse> =>
     method: 'POST',
   })
 
-export const fetchMyPosts = async (nickname: string): Promise<Post[]> =>
-  requestJson<Post[]>(`/api/community/my/posts?${new URLSearchParams({ nickname })}`)
+export const fetchMyPosts = async (): Promise<Post[]> =>
+  requestJson<Post[]>('/api/community/my/posts')
 
-export const fetchMyComments = async (nickname: string): Promise<Comment[]> =>
-  requestJson<Comment[]>(`/api/community/my/comments?${new URLSearchParams({ nickname })}`)
+export const fetchMyComments = async (): Promise<Comment[]> =>
+  requestJson<Comment[]>('/api/community/my/comments')

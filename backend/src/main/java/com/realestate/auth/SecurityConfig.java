@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/trades/filters/**").authenticated()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/community/my/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/community/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/community/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/community/**").authenticated()

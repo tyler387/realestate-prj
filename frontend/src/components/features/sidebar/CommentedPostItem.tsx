@@ -13,9 +13,10 @@ export const CommentedPostItem = ({ rank, post }: Props) => {
   const cleanedTitle = stripTrailingSerial(post.title)
 
   return (
-    <div
+    <button
+      type="button"
       onClick={() => navigate(`/post/${post.postId}`)}
-      className={`-mx-1 mb-1.5 flex cursor-pointer items-start gap-2 rounded-lg border-b border-gray-100 px-1 py-2.5 transition-colors last:mb-0 last:border-b-0 hover:bg-gray-50 ${
+      className={`-mx-1 mb-1.5 flex w-full cursor-pointer items-start gap-2 rounded-lg border-b border-gray-100 px-1 py-2.5 text-left transition-colors last:mb-0 last:border-b-0 hover:bg-gray-50 ${
         rank <= 3 ? 'border-l-2 border-l-emerald-300 pl-2' : ''
       }`}
     >
@@ -41,9 +42,9 @@ export const CommentedPostItem = ({ rank, post }: Props) => {
         </p>
         <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
           <span>댓글 {post.commentCount}개</span>
-          <span>토론 활발</span>
+          <span>{post.createdAt ?? '토론 활발'}</span>
         </div>
       </div>
-    </div>
+    </button>
   )
 }

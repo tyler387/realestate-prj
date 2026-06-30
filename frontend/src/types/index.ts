@@ -1,7 +1,7 @@
 ﻿export type { ApartmentMarker, MapBounds, Apartment } from './apartment'
 
 export type Category = string
-export type SortType = string
+export type SortType = 'LATEST' | 'POPULAR' | 'COMMENT'
 export type AuthStatus = 'GUEST' | 'MEMBER' | 'VERIFIED'
 export type CommunityScope = 'GLOBAL' | 'APARTMENT'
 export type GlobalBoardCode = 'BLAH' | 'REAL_ESTATE' | 'STOCK' | 'DATING'
@@ -26,6 +26,17 @@ export type Post = {
   commentCount: number
   liked: boolean
 }
+
+export type PageResponse<T> = {
+  content: T[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+  hasNext: boolean
+}
+
+export type PostPage = PageResponse<Post>
 
 export type Comment = {
   id: number

@@ -7,6 +7,11 @@ import { EmptyState } from '../../common/EmptyState'
 import { ConfirmDialog } from '../../common/ConfirmDialog'
 import { useUiStore } from '../../../stores/uiStore'
 import { communityLocationLabel } from '../../../utils/communityLabels'
+import {
+  communityQueryKeys,
+  invalidateCommunityLists,
+  invalidateMyCommunity,
+} from '../../../utils/communityQueryKeys'
 
 export const MyPostList = () => {
   const nickname = useUserStore((s) => s.nickname)
@@ -17,15 +22,17 @@ export const MyPostList = () => {
 
   const { data: posts = [], isLoading } = useQuery({
     queryKey: ['community', 'my-posts', nickname],
-    queryFn: () => fetchMyPosts(nickname!),
+    queryFn: () => fetchMyPosts(),
     enabled: !!nickname,
   })
 
   const deleteMutation = useMutation({
     mutationFn: (postId: number) => deletePost(postId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community', 'my-posts', nickname] })
-      queryClient.invalidateQueries({ queryKey: ['community', 'posts'] })
+    onSuccess: (_, postId) => {
+      queryClient.removeQueries({ queryKey: communityQueryKeys.post(postId) })
+      queryClient.removeQueries({ queryKey: communityQueryKeys.comments(postId) })
+      void invalidateCommunityLists(queryClient)
+      void invalidateMyCommunity(queryClient)
       showToast('게시글이 삭제되었어요', 'info')
     },
     onError: () => showToast('게시글 삭제에 실패했습니다', 'error'),
