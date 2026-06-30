@@ -10,10 +10,11 @@ export const ApartmentSearchTrigger = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [, setSearchParams] = useSearchParams()
   const apartmentName = useUserStore(s => s.apartmentName)
-  const { boardCode, sortType } = usePostStore()
+  const { boardCode, sortType, setCommunityState } = usePostStore()
 
   const handleSelectApartment = (apartmentId: number) => {
     const nextBoardCode = isBoardCodeForScope('APARTMENT', boardCode) ? boardCode : DEFAULT_APARTMENT_BOARD
+    setCommunityState({ scope: 'APARTMENT', boardCode: nextBoardCode, sortType })
     setSearchParams(buildCommunitySearchParams('APARTMENT', nextBoardCode, sortType, apartmentId), { replace: true })
   }
 

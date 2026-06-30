@@ -6,13 +6,16 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.realestate.domain.entity.Apartment;
+import com.realestate.domain.repository.ApartmentMarkerProjection;
 import com.realestate.domain.repository.ApartmentRepository;
 import com.realestate.domain.repository.RealTradeRepository;
 import com.realestate.domain.repository.TradeRecordProjection;
 import com.realestate.service.trade.TradeFilterCriteriaResolver;
+import com.realestate.web.dto.ApartmentMarkerDto;
 import com.realestate.web.dto.TradeRecordResponseDto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,6 +42,49 @@ class ApartmentServiceTradeRecordTest {
     private TradeFilterCriteriaResolver tradeFilterCriteriaResolver = new TradeFilterCriteriaResolver();
     @InjectMocks
     private ApartmentService apartmentService;
+
+    @Test
+    void getApartmentMarkers_resolvesJeonseFilterToStoredLeaseType() {
+        when(apartmentRepository.findMarkersByViewport(
+                eq(126.9),
+                eq(37.4),
+                eq(127.1),
+                eq(37.6),
+                eq("LEASE")
+        )).thenReturn(List.of(markerProjection("LEASE")));
+
+        List<ApartmentMarkerDto> result = apartmentService.getApartmentMarkers(
+                126.9,
+                37.4,
+                127.1,
+                37.6,
+                "JEONSE"
+        );
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).latestTradeType()).isEqualTo("LEASE");
+    }
+
+    @Test
+    void getApartmentMarkers_usesAllSaleAndLeaseTradesWhenDealTypeIsEmpty() {
+        when(apartmentRepository.findMarkersByViewport(
+                eq(126.9),
+                eq(37.4),
+                eq(127.1),
+                eq(37.6),
+                isNull()
+        )).thenReturn(List.of(markerProjection("SALE")));
+
+        apartmentService.getApartmentMarkers(
+                126.9,
+                37.4,
+                127.1,
+                37.6,
+                ""
+        );
+
+        verify(apartmentRepository).findMarkersByViewport(126.9, 37.4, 127.1, 37.6, null);
+    }
 
     @Test
     void getTradeRecords_capsVisibleRecordsAndReturnsHasMoreMetadata() {
@@ -201,6 +247,62 @@ class ApartmentServiceTradeRecordTest {
                 .mapToObj(index -> new TestTradeRecordProjection((long) index, tradeType))
                 .map(TradeRecordProjection.class::cast)
                 .toList();
+    }
+
+    private ApartmentMarkerProjection markerProjection(String tradeType) {
+        return new TestApartmentMarkerProjection(tradeType);
+    }
+
+    private record TestApartmentMarkerProjection(String tradeType) implements ApartmentMarkerProjection {
+        @Override
+        public Long getId() {
+            return 1L;
+        }
+
+        @Override
+        public String getComplexName() {
+            return "Test Apartment";
+        }
+
+        @Override
+        public String getSigungu() {
+            return "Gangnam-gu";
+        }
+
+        @Override
+        public String getEupMyeonDong() {
+            return "Yeoksam-dong";
+        }
+
+        @Override
+        public Double getLatitude() {
+            return 37.5;
+        }
+
+        @Override
+        public Double getLongitude() {
+            return 127.0;
+        }
+
+        @Override
+        public Long getLatestSalePrice() {
+            return 150_000L;
+        }
+
+        @Override
+        public BigDecimal getLatestSaleArea() {
+            return new BigDecimal("84.99");
+        }
+
+        @Override
+        public LocalDate getLatestTradeDate() {
+            return LocalDate.of(2026, 6, 1);
+        }
+
+        @Override
+        public String getLatestTradeType() {
+            return tradeType;
+        }
     }
 
     private record TestTradeRecordProjection(Long id, String tradeType) implements TradeRecordProjection {

@@ -7,6 +7,7 @@ export type ApartmentMarker = {
   latestSalePrice: number | null
   latestSaleArea: number | null
   latestTradeDate: string | null
+  latestTradeType?: string | null
   latestJeonsePrice?: number | null
   latestMonthlyDeposit?: number | null
   latestMonthlyRent?: number | null

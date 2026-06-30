@@ -6,11 +6,13 @@ import java.time.LocalDate;
 public record ApartmentMarkerDto(
         Long id,
         String complexName,
+        String sigungu,
         String eupMyeonDong,
         Double latitude,
         Double longitude,
         Long latestSalePrice,
         BigDecimal latestSaleArea,
-        LocalDate latestTradeDate
+        LocalDate latestTradeDate,
+        String latestTradeType
 ) {
 }

@@ -8,6 +8,8 @@ public interface ApartmentMarkerProjection {
 
     String getComplexName();
 
+    String getSigungu();
+
     String getEupMyeonDong();
 
     Double getLatitude();
@@ -19,4 +21,6 @@ public interface ApartmentMarkerProjection {
     BigDecimal getLatestSaleArea();
 
     LocalDate getLatestTradeDate();
+
+    String getLatestTradeType();
 }

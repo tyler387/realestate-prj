@@ -28,9 +28,10 @@ public class ApartmentController {
             @RequestParam double swLng,
             @RequestParam double swLat,
             @RequestParam double neLng,
-            @RequestParam double neLat
+            @RequestParam double neLat,
+            @RequestParam(required = false) String dealType
     ) {
-        return apartmentService.getApartmentMarkers(swLng, swLat, neLng, neLat);
+        return apartmentService.getApartmentMarkers(swLng, swLat, neLng, neLat, dealType);
     }
 
     @GetMapping("/search")

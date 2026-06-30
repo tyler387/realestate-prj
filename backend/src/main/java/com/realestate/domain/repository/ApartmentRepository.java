@@ -41,21 +41,25 @@ public interface ApartmentRepository extends JpaRepository<Apartment, Long> {
             SELECT
                 a.id AS id,
                 a.complex_name AS complexName,
+                a.sigungu AS sigungu,
                 a.eup_myeon_dong AS eupMyeonDong,
                 ST_Y(a.location) AS latitude,
                 ST_X(a.location) AS longitude,
                 rt.trade_amount AS latestSalePrice,
                 rt.exclusive_area AS latestSaleArea,
-                rt.trade_date AS latestTradeDate
+                rt.trade_date AS latestTradeDate,
+                rt.trade_type AS latestTradeType
             FROM apartment a
             LEFT JOIN LATERAL (
                 SELECT
                     r.trade_amount,
                     r.exclusive_area,
-                    r.trade_date
+                    r.trade_date,
+                    r.trade_type
                 FROM real_trade r
                 WHERE r.apartment_id = a.id
-                  AND r.trade_type = 'SALE'
+                  AND (:dealType IS NULL OR r.trade_type = :dealType)
+                  AND (:dealType IS NOT NULL OR r.trade_type IN ('SALE', 'LEASE'))
                   AND r.is_cancelled = false
                 ORDER BY r.trade_date DESC, r.id DESC
                 LIMIT 1
@@ -70,7 +74,8 @@ public interface ApartmentRepository extends JpaRepository<Apartment, Long> {
             @Param("swLng") double swLng,
             @Param("swLat") double swLat,
             @Param("neLng") double neLng,
-            @Param("neLat") double neLat
+            @Param("neLat") double neLat,
+            @Param("dealType") String dealType
     );
 
     @Query(value = """

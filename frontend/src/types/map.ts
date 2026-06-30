@@ -19,7 +19,12 @@ export type MapViewBounds = {
 export type MapMarkerItem = {
   aptId:   string
   aptName: string
+  sigungu?: string
+  eupMyeonDong?: string
   lat:     number
   lng:     number
   price:   number   // 만원 단위
+  area?:   number | null
+  tradeDate?: string | null
+  tradeType?: string | null
 }

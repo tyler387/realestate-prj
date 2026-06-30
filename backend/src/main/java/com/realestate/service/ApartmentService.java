@@ -33,23 +33,32 @@ public class ApartmentService {
     private final TradeFilterCriteriaResolver tradeFilterCriteriaResolver;
 
     @Transactional(readOnly = true)
-    public List<ApartmentMarkerDto> getApartmentMarkers(double swLng, double swLat, double neLng, double neLat) {
+    public List<ApartmentMarkerDto> getApartmentMarkers(
+            double swLng,
+            double swLat,
+            double neLng,
+            double neLat,
+            String dealType
+    ) {
         if (swLng < -180 || swLng > 180 || neLng < -180 || neLng > 180
                 || swLat < -90 || swLat > 90 || neLat < -90 || neLat > 90
                 || swLng >= neLng || swLat >= neLat) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid coordinate bounds");
         }
-        return apartmentRepository.findMarkersByViewport(swLng, swLat, neLng, neLat)
+        String markerDealType = normalizeMarkerDealType(dealType);
+        return apartmentRepository.findMarkersByViewport(swLng, swLat, neLng, neLat, markerDealType)
                 .stream()
                 .map(projection -> new ApartmentMarkerDto(
                         projection.getId(),
                         projection.getComplexName(),
+                        projection.getSigungu(),
                         projection.getEupMyeonDong(),
                         projection.getLatitude(),
                         projection.getLongitude(),
                         projection.getLatestSalePrice(),
                         projection.getLatestSaleArea(),
-                        projection.getLatestTradeDate()
+                        projection.getLatestTradeDate(),
+                        projection.getLatestTradeType()
                 ))
                 .toList();
     }
@@ -248,6 +257,15 @@ public class ApartmentService {
             case "LEASE" -> "\uC804\uC138";
             case "MONTHLY" -> "\uC6D4\uC138";
             default -> tradeType;
+        };
+    }
+
+    private String normalizeMarkerDealType(String dealType) {
+        if (dealType == null || dealType.isBlank()) return null;
+        return switch (dealType.trim().toUpperCase()) {
+            case "SALE" -> "SALE";
+            case "JEONSE", "LEASE" -> "LEASE";
+            default -> null;
         };
     }
 

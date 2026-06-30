@@ -12,12 +12,13 @@ import type { ApartmentMarker } from '../types'
 const toApartmentMarker = (item: MapMarkerItem): ApartmentMarker => ({
   id:                item.aptId as unknown as number,
   complexName:       item.aptName,
-  eupMyeonDong:      '',
+  eupMyeonDong:      item.eupMyeonDong ?? '',
   latitude:          item.lat,
   longitude:         item.lng,
   latestSalePrice:   item.price,
-  latestSaleArea:    null,
-  latestTradeDate:   null,
+  latestSaleArea:    item.area ?? null,
+  latestTradeDate:   item.tradeDate ?? null,
+  latestTradeType:   item.tradeType ?? null,
 })
 
 export const MapView = () => {

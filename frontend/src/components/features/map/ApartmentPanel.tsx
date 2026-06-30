@@ -11,6 +11,12 @@ import { fetchPosts } from '../../../services/communityService'
 
 type RecentPost = { id: number; title: string }
 
+const toTradeTypeLabel = (tradeType?: string | null): string => {
+  if (tradeType === 'LEASE' || tradeType === 'JEONSE') return '전세'
+  if (tradeType === 'MONTHLY') return '월세'
+  return '매매'
+}
+
 export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | null }) => {
   const navigate = useNavigate()
   const status = useUserStore((state) => state.status)
@@ -77,9 +83,14 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
             <p className="text-xs text-gray-400">{apartment.eupMyeonDong}</p>
           </div>
           {apartment.latestSalePrice && (
-            <span className="shrink-0 text-sm font-semibold text-blue-500">
-              {formatPrice(apartment.latestSalePrice)}
-            </span>
+            <div className="shrink-0 text-right">
+              <span className="block text-[11px] font-bold text-gray-400">
+                최근 {toTradeTypeLabel(apartment.latestTradeType)}
+              </span>
+              <span className="block text-sm font-semibold text-blue-500">
+                {formatPrice(apartment.latestSalePrice)}
+              </span>
+            </div>
           )}
         </div>
 
