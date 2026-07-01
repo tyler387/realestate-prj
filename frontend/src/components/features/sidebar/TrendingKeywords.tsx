@@ -30,8 +30,8 @@ export const TrendingKeywords = ({ scope, aptId, boardCode }: Props) => {
   return (
     <SidebarCard className="p-4 lg:p-5">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-bold text-gray-700">인기 키워드</h3>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+        <h3 className="text-sm font-bold text-text-strong">인기 키워드</h3>
+        <span className="rounded-full border border-line-base bg-surface-soft px-2 py-0.5 text-[11px] font-semibold text-text-muted">
           최근 7일
         </span>
       </div>

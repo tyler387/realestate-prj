@@ -19,15 +19,17 @@ export const CategoryFilter = () => {
   }
 
   return (
-    <div className="bg-gray-50">
+    <div className="bg-surface-app">
       <div className="grid grid-cols-2 gap-1 px-4 pt-3">
         {scopeTabs.map((tab) => (
           <button
             key={tab.value}
             type="button"
             onClick={() => handleScopeChange(tab.value)}
-            className={`h-9 rounded-lg text-sm font-semibold transition-colors ${
-              scope === tab.value ? 'bg-gray-900 text-white' : 'bg-white text-gray-500'
+            className={`h-9 rounded-lg border text-sm font-semibold transition-colors ${
+              scope === tab.value
+                ? 'border-brand-600 bg-brand-600 text-white shadow-panel'
+                : 'border-line-base bg-surface-base text-text-muted hover:bg-surface-soft'
             }`}
           >
             {tab.label}
@@ -41,10 +43,10 @@ export const CategoryFilter = () => {
             key={board.value}
             type="button"
             onClick={() => handleBoardChange(board.value)}
-            className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+            className={`shrink-0 rounded-full border px-3 py-1 text-sm font-semibold transition-colors ${
               boardCode === board.value
-                ? 'bg-blue-500 text-white'
-                : 'border border-gray-200 bg-white text-gray-500'
+                ? 'border-brand-600 bg-brand-50 text-brand-700'
+                : 'border-line-base bg-surface-base text-text-muted hover:bg-surface-soft'
             }`}
           >
             {board.label}

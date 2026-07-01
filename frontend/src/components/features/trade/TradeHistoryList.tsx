@@ -26,7 +26,7 @@ export const TradeHistoryList = ({ records, selectedType, selectedArea, limit, h
   return (
     <div>
       {hasMore && limit != null && (
-        <div className="border-b border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-700">
+        <div className="border-b border-amber-100 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-700">
           조회 성능을 위해 최근 거래 {limit.toLocaleString()}건까지 표시합니다. 기간이나 필터를 좁히면 더 정확히 볼 수 있습니다.
         </div>
       )}

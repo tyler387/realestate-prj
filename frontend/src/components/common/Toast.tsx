@@ -2,9 +2,9 @@
 import { useUiStore } from '../../stores/uiStore'
 
 const toneClass = {
-  success: 'bg-green-600',
-  info: 'bg-gray-900',
-  error: 'bg-red-600',
+  success: 'bg-market-rent',
+  info: 'bg-text-strong',
+  error: 'bg-market-sale',
 } as const
 
 export const Toast = () => {
@@ -21,7 +21,7 @@ export const Toast = () => {
 
   return (
     <div className="pointer-events-none fixed bottom-20 left-1/2 z-[90] -translate-x-1/2">
-      <div className={`rounded-full px-4 py-2 text-sm text-white shadow-lg ${toneClass[toast.type]}`}>
+      <div className={`rounded-full px-4 py-2 text-sm font-medium text-white shadow-floating ${toneClass[toast.type]}`}>
         {toast.message}
       </div>
     </div>

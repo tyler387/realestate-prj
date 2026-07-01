@@ -32,8 +32,8 @@ export const PeriodFilter = ({
           onClick={() => onChange(p.value)}
           className={
             p.value === value
-              ? 'rounded-full bg-blue-500 px-4 py-1.5 text-sm font-medium text-white'
-              : 'rounded-full bg-gray-100 px-4 py-1.5 text-sm text-gray-500'
+              ? 'rounded-full border border-brand-600 bg-brand-600 px-4 py-1.5 text-sm font-semibold text-white shadow-panel'
+              : 'rounded-full border border-line-base bg-surface-base px-4 py-1.5 text-sm font-semibold text-text-muted transition-colors hover:bg-surface-soft'
           }
         >
           {p.label}
@@ -42,21 +42,21 @@ export const PeriodFilter = ({
     </div>
 
     {value === 'custom' && (
-      <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
-        <p className="mb-2 text-xs font-medium text-gray-600">조회 기간</p>
+      <div className="mt-3 rounded-xl border border-line-base bg-surface-base p-3">
+        <p className="mb-2 text-xs font-semibold text-text-body">조회 기간</p>
         <div className="flex items-center gap-2">
           <input
             type="date"
             value={startDate ?? ''}
             onChange={(e) => onCustomDateChange(e.target.value || null, endDate)}
-            className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-xs"
+            className="w-full rounded-lg border border-line-base px-2 py-1.5 text-xs text-text-body outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
           />
-          <span className="text-xs text-gray-400">~</span>
+          <span className="text-xs text-text-subtle">~</span>
           <input
             type="date"
             value={endDate ?? ''}
             onChange={(e) => onCustomDateChange(startDate, e.target.value || null)}
-            className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-xs"
+            className="w-full rounded-lg border border-line-base px-2 py-1.5 text-xs text-text-body outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
           />
         </div>
       </div>

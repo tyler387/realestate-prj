@@ -25,7 +25,7 @@ export const FloatingWriteButton = () => {
   return (
     <button
       onClick={handleClick}
-      className="absolute bottom-6 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-500 shadow-lg transition-colors hover:bg-blue-600"
+      className="absolute bottom-6 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 shadow-floating transition-colors hover:bg-brand-700"
       aria-label="글쓰기"
     >
       <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

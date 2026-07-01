@@ -11,23 +11,26 @@ export const TradeRankingCard = ({ ranking }: Props) => {
 
   return (
     <div
-      className={`mx-4 mb-2 flex cursor-pointer items-center gap-3 rounded-xl bg-white p-4 shadow-sm ${isTop3 ? 'border-l-4 border-blue-500' : ''}`}
+      className={`mx-4 mb-3 flex cursor-pointer items-center gap-3 rounded-xl border border-line-base bg-surface-base p-4 transition-all hover:border-brand-100 hover:shadow-panel ${
+        isTop3 ? 'border-l-4 border-l-brand-600' : ''
+      }`}
       onClick={() => navigate(`/trade/apartment/${aptId}`, { state: { apartmentName: aptName } })}
     >
-      <div className={`w-8 text-center ${isTop3 ? 'text-xl font-bold text-blue-500' : 'text-base font-bold text-gray-400'}`}>
+      <div className={`w-8 text-center tabular-nums ${isTop3 ? 'text-xl font-black text-brand-700' : 'text-base font-bold text-text-subtle'}`}>
         {rank}
       </div>
 
-      <div className="flex-1">
-        <p className="text-base font-semibold text-gray-900">{aptName}</p>
-        <p className="mt-0.5 text-xs text-gray-400">{sigungu}</p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-base font-bold text-text-strong">{aptName}</p>
+        <p className="mt-0.5 text-xs font-medium text-text-subtle">{sigungu}</p>
         {recentMonthAvgPrice != null && (
-          <p className="mt-1 text-sm text-gray-700">최근 1개월 평균 {formatPrice(recentMonthAvgPrice)}</p>
+          <p className="mt-1 text-sm font-medium text-text-body">최근 1개월 평균 {formatPrice(recentMonthAvgPrice)}</p>
         )}
       </div>
 
-      <div className="text-right">
-        <p className="text-base font-bold text-blue-500">{transactionCount}건</p>
+      <div className="shrink-0 text-right">
+        <p className="text-base font-black text-brand-700 tabular-nums">{transactionCount}건</p>
+        <p className="mt-0.5 text-[11px] font-medium text-text-subtle">거래량</p>
       </div>
     </div>
   )

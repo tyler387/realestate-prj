@@ -44,24 +44,31 @@ export const Header = () => {
   }
 
   return (
-    <header className="z-30 flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
-      <div className="w-10">
+    <header className="z-30 flex h-14 shrink-0 items-center justify-between border-b border-line-base bg-surface-base px-4">
+      <div className="w-24">
         {isBackPattern ? (
-          <button onClick={() => navigate(-1)} className="flex items-center text-gray-700" aria-label="뒤로가기">
+          <button onClick={() => navigate(-1)} className="flex h-10 w-10 items-center justify-center rounded-full text-text-body transition-colors hover:bg-surface-soft" aria-label="뒤로가기">
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
         ) : (
-          <button onClick={() => navigate('/')} className="text-base font-bold text-blue-500" aria-label="홈으로">HB</button>
+          <button onClick={() => navigate('/')} className="flex items-center gap-2" aria-label="홈으로">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-black tracking-tight text-white">
+              HB
+            </span>
+            <span className="hidden text-base font-extrabold tracking-tight text-brand-700 sm:inline">
+              HomeBlind
+            </span>
+          </button>
         )}
       </div>
 
-      <h1 className="absolute left-1/2 -translate-x-1/2 text-lg font-bold text-gray-900">{title}</h1>
+      <h1 className="absolute left-1/2 max-w-[52%] -translate-x-1/2 truncate text-lg font-bold text-text-strong">{title}</h1>
 
-      <div className="flex w-10 justify-end">
+      <div className="flex w-24 justify-end">
         {!isBackPattern && !isAuthPage && (
-          <button onClick={onProfileClick} className="text-gray-700" aria-label="마이페이지">
+          <button onClick={onProfileClick} className="flex h-10 w-10 items-center justify-center rounded-full text-text-body transition-colors hover:bg-surface-soft" aria-label="마이페이지">
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"

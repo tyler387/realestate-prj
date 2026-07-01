@@ -39,15 +39,15 @@ export const TabBar = () => {
   if (isHidden) return null
 
   return (
-    <nav className="z-20 flex h-12 w-full shrink-0 border-b border-gray-200 bg-white">
+    <nav className="z-20 flex h-12 w-full shrink-0 border-b border-line-base bg-surface-base lg:justify-center">
       {tabs.map(({ to, label, icon }) => (
         <NavLink
           key={to}
           to={to}
           end
           className={({ isActive }) =>
-            `flex flex-1 flex-col items-center justify-center gap-0.5 text-xs transition-colors ${
-              isActive ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-400'
+            `flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-semibold transition-colors lg:flex-none lg:px-12 ${
+              isActive ? 'border-b-2 border-brand-600 text-brand-700' : 'text-text-subtle hover:text-text-muted'
             }`
           }
         >

@@ -26,12 +26,12 @@ export const PopularPosts = ({ scope, aptId, boardCode }: Props) => {
   return (
     <SidebarCard className="p-4 lg:p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-gray-700">인기글</h3>
+        <h3 className="text-sm font-bold text-text-strong">인기글</h3>
         {posts.length > 0 && (
           <button
             type="button"
             onClick={handleMoreClick}
-            className="text-xs font-medium text-blue-600 hover:text-blue-700"
+            className="text-xs font-bold text-brand-700 hover:text-brand-900"
           >
             더보기
           </button>

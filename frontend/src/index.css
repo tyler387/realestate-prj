@@ -9,6 +9,23 @@ body,
   height: 100%;
 }
 
+body {
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Quiet, modern scrollbar styling (WebKit + Firefox) */
 .modern-scroll {
   scrollbar-width: thin;

@@ -5,9 +5,9 @@ import { SidebarCard, CardTitle } from './SidebarCard'
 import { ApartmentInfoCardSkeleton, ErrorMessage, SidebarEmptyState } from './SidebarSkeleton'
 
 const KpiItem = ({ label, value }: { label: string; value: string }) => (
-  <div className="rounded-lg border border-gray-100 bg-gray-50 px-2.5 py-2">
-    <p className="text-[10px] text-gray-500 lg:text-[11px]">{label}</p>
-    <p className="mt-1 text-[11px] font-semibold text-gray-800 lg:text-xs">{value}</p>
+  <div className="rounded-lg border border-line-base bg-surface-soft px-2.5 py-2">
+    <p className="text-[10px] font-medium text-text-muted lg:text-[11px]">{label}</p>
+    <p className="mt-1 text-[11px] font-bold text-text-strong lg:text-xs">{value}</p>
   </div>
 )
 
@@ -38,7 +38,7 @@ export const ApartmentInfoCard = ({ aptId }: { aptId: string }) => {
         <div className="flex h-full flex-col">
           <div>
             <p
-              className="text-sm font-bold leading-5 text-gray-900 lg:text-base"
+              className="text-sm font-bold leading-5 text-text-strong lg:text-base"
               style={{
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
@@ -50,7 +50,7 @@ export const ApartmentInfoCard = ({ aptId }: { aptId: string }) => {
             </p>
           </div>
 
-          <p className="mt-1 text-[11px] text-gray-500 lg:text-xs">{data.location}</p>
+          <p className="mt-1 text-[11px] text-text-muted lg:text-xs">{data.location}</p>
           <div className="mt-2 flex flex-wrap items-center gap-1">
             {isNewApartment && (
               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
@@ -58,7 +58,7 @@ export const ApartmentInfoCard = ({ aptId }: { aptId: string }) => {
               </span>
             )}
             {isLargeComplex && (
-              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+              <span className="rounded-full border border-brand-100 bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700">
                 대단지
               </span>
             )}
@@ -97,14 +97,14 @@ export const ApartmentInfoCard = ({ aptId }: { aptId: string }) => {
             <button
               type="button"
               onClick={() => navigate(`/trade/apartment/${data.aptId}`)}
-              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 lg:text-xs"
+              className="rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-[11px] font-bold text-brand-700 transition-colors hover:bg-brand-100 lg:text-xs"
             >
               실거래 상세 보기
             </button>
             <button
               type="button"
               onClick={() => navigate('/write')}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 lg:text-xs"
+              className="rounded-lg border border-line-base bg-surface-base px-3 py-2 text-[11px] font-bold text-text-body transition-colors hover:bg-surface-soft lg:text-xs"
             >
               이 아파트 글쓰기
             </button>

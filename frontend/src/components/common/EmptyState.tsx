@@ -5,8 +5,8 @@
 }
 
 export const EmptyState = ({ message, title, icon = '📭' }: EmptyStateProps) => (
-  <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-    <span className="mb-2 text-4xl">{icon}</span>
-    <p className="text-sm">{title ?? message}</p>
+  <div className="mx-4 my-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-line-base bg-surface-base px-6 py-12 text-center">
+    <span className="mb-3 text-3xl leading-none opacity-80">{icon}</span>
+    <p className="text-sm font-medium text-text-muted">{title ?? message}</p>
   </div>
 )

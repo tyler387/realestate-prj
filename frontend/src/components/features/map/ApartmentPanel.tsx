@@ -67,27 +67,27 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
 
   if (!apartment) {
     return (
-      <div className="z-10 flex min-h-[160px] items-center justify-center border-t border-gray-200 bg-white">
-        <p className="text-sm text-gray-400">지도에서 마커를 선택해주세요</p>
+      <div className="z-10 flex min-h-[160px] items-center justify-center border-t border-line-base bg-surface-base">
+        <p className="text-sm font-medium text-text-muted">지도에서 마커를 선택해주세요</p>
       </div>
     )
   }
 
   return (
-    <div className="z-10 min-h-[200px] border-t border-gray-200 bg-white">
-      <div className="mx-auto my-1.5 h-1 w-10 rounded-full bg-gray-200" />
+    <div className="z-10 min-h-[200px] border-t border-line-base bg-surface-base">
+      <div className="mx-auto my-1.5 h-1 w-10 rounded-full bg-line-strong" />
       <div className="px-4 pb-4 pt-2">
         <div className="mb-1 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-base font-bold text-gray-900">{apartment.complexName}</h3>
-            <p className="text-xs text-gray-400">{apartment.eupMyeonDong}</p>
+            <h3 className="truncate text-base font-black text-text-strong">{apartment.complexName}</h3>
+            <p className="text-xs font-medium text-text-subtle">{apartment.eupMyeonDong}</p>
           </div>
           {apartment.latestSalePrice && (
             <div className="shrink-0 text-right">
-              <span className="block text-[11px] font-bold text-gray-400">
+              <span className="block text-[11px] font-bold text-text-subtle">
                 최근 {toTradeTypeLabel(apartment.latestTradeType)}
               </span>
-              <span className="block text-sm font-semibold text-blue-500">
+              <span className="block text-sm font-black text-brand-700 tabular-nums">
                 {formatPrice(apartment.latestSalePrice)}
               </span>
             </div>
@@ -101,7 +101,7 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
                 key={post.id}
                 type="button"
                 onClick={() => navigate(`/post/${post.id}`)}
-                className="block w-full truncate text-left text-xs text-gray-600 hover:text-blue-500"
+                className="block w-full truncate text-left text-xs font-medium text-text-body hover:text-brand-700"
               >
                 {post.title}
               </button>
@@ -113,14 +113,14 @@ export const ApartmentPanel = ({ apartment }: { apartment: ApartmentMarker | nul
           <button
             type="button"
             onClick={handleBrowse}
-            className="flex-1 rounded-lg border border-gray-200 py-2 text-sm text-gray-600 hover:bg-gray-50"
+            className="flex-1 rounded-lg border border-line-base py-2 text-sm font-semibold text-text-body transition-colors hover:bg-surface-soft"
           >
             둘러보기
           </button>
           <button
             type="button"
             onClick={handleWrite}
-            className="flex-1 rounded-lg bg-blue-500 py-2 text-sm font-medium text-white hover:bg-blue-600"
+            className="flex-1 rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
           >
             글쓰기
           </button>

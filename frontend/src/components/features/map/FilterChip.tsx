@@ -7,10 +7,10 @@ type FilterChipProps = {
 export const FilterChip = ({ label, isSelected, onClick }: FilterChipProps) => (
   <button
     onClick={onClick}
-    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors
+    className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors
       ${isSelected
-        ? 'bg-blue-500 text-white'
-        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        ? 'border-brand-600 bg-brand-600 text-white'
+        : 'border-line-base bg-surface-base text-text-body hover:bg-surface-soft'
       }`}
   >
     {label}

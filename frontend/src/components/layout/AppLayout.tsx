@@ -39,7 +39,7 @@ export const AppLayout = () => {
   const showRight = showCommRight || showTradeRight
 
   return (
-    <div className="flex h-screen flex-col bg-gray-100">
+    <div className="flex h-screen flex-col bg-surface-app">
       <Header />
       <TabBar />
 
@@ -51,7 +51,7 @@ export const AppLayout = () => {
           </aside>
         )}
 
-        <div className="relative flex min-w-0 max-w-3xl flex-1 flex-col overflow-hidden bg-gray-50 shadow-xl">
+        <div className="relative flex min-w-0 max-w-3xl flex-1 flex-col overflow-hidden border-x border-line-base bg-surface-app shadow-panel">
           <main className="modern-scroll flex-1 overflow-y-auto">
             <Outlet />
           </main>

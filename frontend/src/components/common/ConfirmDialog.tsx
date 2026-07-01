@@ -13,23 +13,23 @@ export const ConfirmDialog = ({
   confirmLabel = '삭제',
   confirmDisabled = false,
 }: Props) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-    <div className="mx-6 w-full max-w-sm rounded-2xl bg-white px-6 py-5 shadow-xl">
-      <p className="mb-5 text-center text-sm text-gray-700">{message}</p>
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-6">
+    <div className="w-full max-w-sm rounded-xl border border-line-base bg-surface-base px-6 py-5 shadow-floating">
+      <p className="mb-5 text-center text-sm leading-6 text-text-body">{message}</p>
       <div className="flex gap-2">
         <button
           onClick={onCancel}
-          className="flex-1 rounded-xl border border-gray-200 py-3 text-sm text-gray-500 hover:bg-gray-50"
+          className="flex-1 rounded-lg border border-line-base bg-surface-base py-3 text-sm font-semibold text-text-muted transition-colors hover:bg-surface-soft"
         >
           취소
         </button>
         <button
           onClick={onConfirm}
           disabled={confirmDisabled}
-          className={`flex-1 rounded-xl py-3 text-sm font-medium text-white ${
+          className={`flex-1 rounded-lg py-3 text-sm font-semibold text-white transition-colors ${
             confirmDisabled
               ? 'cursor-not-allowed bg-red-300'
-              : 'bg-red-500 hover:bg-red-600'
+              : 'bg-market-sale hover:bg-red-600'
           }`}
         >
           {confirmLabel}

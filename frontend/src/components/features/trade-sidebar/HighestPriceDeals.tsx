@@ -23,9 +23,9 @@ export const HighestPriceDeals = () => {
       )}
 
       {!isLoading && !isError && data && data.length > 0 && (
-        data.map((deal) => (
+        data.map((deal, index) => (
           <HighestDealItem
-            key={`${deal.aptId}-${deal.dealDate}`}
+            key={`${deal.aptId}-${deal.dealDate}-${deal.price}-${deal.area}-${index}`}
             deal={deal}
             onClick={() => setAptId(deal.aptId)}
           />

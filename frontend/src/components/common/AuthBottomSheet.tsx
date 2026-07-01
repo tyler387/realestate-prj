@@ -50,49 +50,49 @@ export const AuthBottomSheet = ({
   return (
     <>
       <div
-        className="fixed inset-0 z-[60] bg-black/40 transition-opacity duration-200"
+        className="fixed inset-0 z-[60] bg-slate-950/45 transition-opacity duration-200"
         onClick={onClose}
         aria-hidden
       />
 
       <section
-        className="fixed bottom-0 left-1/2 z-[70] w-full max-w-3xl -translate-x-1/2 rounded-t-2xl bg-white px-6 pb-10 pt-4 shadow-2xl transition-transform duration-200"
+        className="fixed bottom-0 left-1/2 z-[70] w-full max-w-3xl -translate-x-1/2 rounded-t-2xl border border-line-base bg-surface-base px-6 pb-10 pt-4 shadow-floating transition-transform duration-200"
         role="dialog"
         aria-modal="true"
       >
-        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-gray-200" />
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-line-strong" />
 
         {userStatus === 'GUEST' ? (
           <>
-            <h2 className="text-lg font-bold text-gray-900">로그인이 필요해요</h2>
-            <p className="mb-6 mt-1 text-sm text-gray-500">{guestDescription}</p>
+            <h2 className="text-lg font-bold text-text-strong">로그인이 필요해요</h2>
+            <p className="mb-6 mt-1 text-sm leading-6 text-text-muted">{guestDescription}</p>
             <button
               onClick={onLogin}
-              className="h-12 w-full rounded-xl bg-blue-500 text-sm font-semibold text-white hover:bg-blue-600"
+              className="h-12 w-full rounded-lg bg-brand-600 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
             >
               로그인하고 참여하기
             </button>
             <button
               onClick={onSignup}
-              className="mt-3 h-12 w-full rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="mt-3 h-12 w-full rounded-lg border border-line-base bg-surface-base text-sm font-semibold text-text-body transition-colors hover:bg-surface-soft"
             >
               회원가입
             </button>
-            <button onClick={onClose} className="mt-2 h-10 w-full text-sm text-gray-400">
+            <button onClick={onClose} className="mt-2 h-10 w-full text-sm font-medium text-text-subtle">
               둘러보기
             </button>
           </>
         ) : (
           <>
-            <h2 className="text-lg font-bold text-gray-900">아파트 인증이 필요해요</h2>
-            <p className="mb-6 mt-1 text-sm text-gray-500">{memberDescription}</p>
+            <h2 className="text-lg font-bold text-text-strong">아파트 인증이 필요해요</h2>
+            <p className="mb-6 mt-1 text-sm leading-6 text-text-muted">{memberDescription}</p>
             <button
               onClick={onVerify}
-              className="h-12 w-full rounded-xl bg-blue-500 text-sm font-semibold text-white hover:bg-blue-600"
+              className="h-12 w-full rounded-lg bg-brand-600 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
             >
               아파트 인증하고 참여하기
             </button>
-            <button onClick={onClose} className="mt-2 h-10 w-full text-sm text-gray-400">
+            <button onClick={onClose} className="mt-2 h-10 w-full text-sm font-medium text-text-subtle">
               나중에 할게요
             </button>
           </>

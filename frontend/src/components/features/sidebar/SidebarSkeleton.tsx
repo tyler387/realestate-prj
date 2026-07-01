@@ -1,5 +1,5 @@
 ﻿const SkeletonBox = ({ className }: { className: string }) => (
-  <div className={`animate-pulse rounded bg-gray-200 ${className}`} />
+  <div className={`animate-pulse rounded bg-slate-200/80 ${className}`} />
 )
 
 export const ApartmentInfoCardSkeleton = () => (
@@ -24,7 +24,7 @@ export const ApartmentInfoCardSkeleton = () => (
 export const PostListSkeleton = () => (
   <div>
     {Array.from({ length: 5 }).map((_, i) => (
-      <div key={i} className="flex gap-2 border-b border-gray-100 py-2 last:border-b-0">
+      <div key={i} className="flex gap-2 border-b border-line-base py-2 last:border-b-0">
         <SkeletonBox className="mt-0.5 h-3 w-4 shrink-0" />
         <div className="flex-1 space-y-1.5">
           <SkeletonBox className="h-3 w-full" />
@@ -52,9 +52,9 @@ export const PriceTrendSkeleton = () => (
 )
 
 export const ErrorMessage = ({ text }: { text: string }) => (
-  <p className="py-4 text-center text-xs text-gray-500">{text}</p>
+  <p className="py-4 text-center text-xs text-text-muted">{text}</p>
 )
 
 export const SidebarEmptyState = ({ text }: { text: string }) => (
-  <p className="rounded-lg bg-gray-50 px-3 py-4 text-center text-xs text-gray-500">{text}</p>
+  <p className="rounded-lg border border-dashed border-line-base bg-surface-soft px-3 py-4 text-center text-xs text-text-muted">{text}</p>
 )

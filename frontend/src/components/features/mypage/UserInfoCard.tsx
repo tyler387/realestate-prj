@@ -1,4 +1,4 @@
-﻿import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useUserStore } from '../../../stores/userStore'
 
 export const UserInfoCard = () => {
@@ -8,21 +8,21 @@ export const UserInfoCard = () => {
   const verifiedApartmentName = useUserStore((s) => s.verifiedApartmentName)
 
   return (
-    <div className="bg-white px-4 py-5">
-      <p className="text-lg font-bold text-gray-900">{nickname ?? '이웃'}</p>
+    <div className="mx-4 mt-3 rounded-xl border border-line-base bg-surface-base p-4">
+      <p className="text-lg font-black text-text-strong">{nickname ?? '이웃'}</p>
 
       {status === 'VERIFIED' ? (
-        <p className="mt-1 text-sm text-green-500">{verifiedApartmentName ?? '아파트'} · 인증완료 ✓</p>
+        <p className="mt-1 text-sm font-semibold text-market-rent">{verifiedApartmentName ?? '아파트'} · 인증완료</p>
       ) : (
         <div>
-          <span className="mt-1 inline-flex rounded-full bg-orange-50 px-2 py-0.5 text-xs text-orange-500">
+          <span className="mt-2 inline-flex rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">
             거주지 미인증
           </span>
-          <div className="mt-3 rounded-xl bg-blue-50 p-4">
-            <p className="text-sm text-blue-700">🏠 거주지를 인증하면 글쓰기, 댓글이 가능해요</p>
+          <div className="mt-3 rounded-xl border border-brand-100 bg-brand-50 p-4">
+            <p className="text-sm font-medium text-brand-700">거주지를 인증하면 글쓰기, 댓글이 가능해요</p>
             <button
               onClick={() => navigate('/verify')}
-              className="mt-3 rounded-lg bg-blue-500 px-4 py-2 text-sm text-white"
+              className="mt-3 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
             >
               지금 인증하기
             </button>

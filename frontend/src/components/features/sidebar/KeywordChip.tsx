@@ -7,15 +7,15 @@
 }
 
 export const KeywordChip = ({ keyword, isSelected, onClick, rank, emphasis = 'normal' }: Props) => {
-  const base = 'rounded-full px-3 py-1 text-xs transition-colors'
+  const base = 'rounded-full border px-3 py-1 text-xs font-semibold transition-colors'
 
   const normalStyle = isSelected
-    ? 'bg-blue-500 text-white'
-    : 'cursor-pointer bg-gray-100 text-gray-600 hover:bg-gray-200'
+    ? 'border-brand-600 bg-brand-600 text-white'
+    : 'cursor-pointer border-line-base bg-surface-soft text-text-body hover:bg-white'
 
   const topStyle = isSelected
-    ? 'bg-blue-600 text-white shadow-sm'
-    : 'cursor-pointer bg-blue-50 text-blue-700 hover:bg-blue-100'
+    ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
+    : 'cursor-pointer border-brand-100 bg-brand-50 text-brand-700 hover:bg-brand-100'
 
   return (
     <button

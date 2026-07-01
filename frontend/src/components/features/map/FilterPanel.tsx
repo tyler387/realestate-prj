@@ -8,10 +8,7 @@ export const FilterPanel = () => {
   } = useMapFilterStore()
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10
-                    flex flex-wrap items-center justify-center gap-2
-                    bg-white/90 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-lg
-                    max-w-[90%]">
+    <div className="absolute left-1/2 top-4 z-10 flex max-w-[90%] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-2xl border border-line-base bg-surface-base/90 px-4 py-2 shadow-floating backdrop-blur-md">
 
       {/* 거래 유형 */}
       <FilterChip label="전체" isSelected={!dealType}
@@ -21,7 +18,7 @@ export const FilterPanel = () => {
       <FilterChip label="전세" isSelected={dealType === 'JEONSE'}
         onClick={() => setDealType(dealType === 'JEONSE' ? null : 'JEONSE')} />
 
-      <span className="text-gray-200 select-none">|</span>
+      <span className="select-none text-line-strong">|</span>
 
       {/* 가격대 */}
       <FilterChip label="~10억"
@@ -37,7 +34,7 @@ export const FilterPanel = () => {
         isSelected={minPrice === 200000 && !maxPrice}
         onClick={() => { setMinPrice(minPrice === 200000 ? null : 200000); setMaxPrice(null) }} />
 
-      <span className="text-gray-200 select-none">|</span>
+      <span className="select-none text-line-strong">|</span>
 
       {/* 면적 */}
       <FilterChip label="20평대" isSelected={areaRange === '20'}
@@ -49,7 +46,7 @@ export const FilterPanel = () => {
 
       <button
         onClick={resetFilters}
-        className="text-xs text-gray-400 hover:text-gray-600 ml-1 transition-colors"
+        className="ml-1 text-xs font-semibold text-text-subtle transition-colors hover:text-text-body"
       >
         초기화
       </button>

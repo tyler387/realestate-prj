@@ -18,16 +18,13 @@ export const AptSelectPromptBanner = () => {
 
   return (
     <>
-      <div className="mx-4 mb-3 px-4 py-3
-                      bg-blue-50 border border-blue-100 rounded-xl
-                      flex items-center justify-between">
-        <span className="text-sm text-blue-700">
-          🏢 아파트를 선택하면 해당 커뮤니티를 볼 수 있어요
+      <div className="mx-4 mb-3 flex items-center justify-between rounded-xl border border-brand-100 bg-brand-50 px-4 py-3">
+        <span className="text-sm font-medium text-brand-700">
+          아파트를 선택하면 해당 커뮤니티를 볼 수 있어요
         </span>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="text-xs font-semibold text-blue-500 ml-3 flex-shrink-0
-                     hover:text-blue-700 transition-colors"
+          className="ml-3 flex-shrink-0 text-xs font-bold text-brand-700 transition-colors hover:text-brand-900"
         >
           선택하기
         </button>

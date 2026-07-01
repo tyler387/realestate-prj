@@ -168,7 +168,7 @@ export const PriceChart = ({
 
   if (!hasData) {
     return (
-      <div className="mx-4 my-3 rounded-xl bg-white p-4 shadow-sm">
+      <div className="mx-4 my-3 rounded-xl border border-line-base bg-surface-base p-4">
         <ChartHeader
           areaOptions={areaOptions}
           mode={effectiveMode}
@@ -183,7 +183,7 @@ export const PriceChart = ({
           onMovingAverageWindowChange={setMovingAverageWindow}
         />
         <div className="flex h-40 items-center justify-center">
-          <span className="text-sm text-gray-400">선택한 조건의 차트 데이터가 없습니다</span>
+          <span className="text-sm font-medium text-text-muted">선택한 조건의 차트 데이터가 없습니다</span>
         </div>
       </div>
     )
@@ -285,7 +285,7 @@ export const PriceChart = ({
   const movingAverageColor = '#f59e0b'
 
   return (
-    <div className="mx-4 my-3 rounded-xl bg-white p-4 shadow-sm">
+    <div className="mx-4 my-3 rounded-xl border border-line-base bg-surface-base p-4">
       <ChartHeader
         areaOptions={areaOptions}
         mode={effectiveMode}
@@ -403,7 +403,7 @@ export const PriceChart = ({
       </div>
 
       {showMovingAverage && (
-        <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-500">
+        <div className="mt-2 flex items-center gap-2 text-[11px] text-text-muted">
           <span className="h-0.5 w-5 rounded-full bg-amber-500" />
           <span>
             {hasEnoughMovingAverageSamples
@@ -413,7 +413,7 @@ export const PriceChart = ({
         </div>
       )}
       {isTradeRecordLimited && (
-        <div className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+        <div className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-700">
           실거래가 점 모드는 최근 거래 {tradeRecordLimit?.toLocaleString() ?? '일부'}건만 표시할 수 있어 평균 차트로 전환했습니다.
         </div>
       )}
@@ -450,15 +450,15 @@ const ChartHeader = ({
 }: ChartHeaderProps) => (
   <div className="mb-3">
     <div className="mb-2 flex items-center justify-between gap-2">
-      <p className="text-sm font-semibold text-gray-700">가격 흐름 ({targetType})</p>
-      <div className="flex shrink-0 rounded-lg bg-gray-100 p-1">
+      <p className="text-sm font-bold text-text-strong">가격 흐름 ({targetType})</p>
+      <div className="flex shrink-0 rounded-lg bg-surface-soft p-1">
         {RANGE_OPTIONS.map((option) => (
           <button
             key={option.value}
             type="button"
             onClick={() => onPriceHistoryRangeChange(option.value)}
             className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
-              priceHistoryRange === option.value ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-700'
+              priceHistoryRange === option.value ? 'bg-surface-base text-brand-700 shadow-sm' : 'text-text-subtle hover:text-text-body'
             }`}
           >
             {option.label}
@@ -468,7 +468,7 @@ const ChartHeader = ({
     </div>
 
     <div className="mb-3 flex flex-wrap justify-end gap-2">
-      <div className="flex shrink-0 rounded-lg bg-gray-100 p-1">
+      <div className="flex shrink-0 rounded-lg bg-surface-soft p-1">
         {MODE_OPTIONS.map((option) => (
           <button
             key={option.value}
@@ -479,14 +479,14 @@ const ChartHeader = ({
             disabled={isTradesModeDisabled && option.value === 'trades'}
             title={isTradesModeDisabled && option.value === 'trades' ? '최근 거래 표시 제한이 적용되어 평균 차트로 표시합니다.' : undefined}
             className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
-              mode === option.value ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-700'
+              mode === option.value ? 'bg-surface-base text-text-strong shadow-sm' : 'text-text-subtle hover:text-text-body'
             } ${isTradesModeDisabled && option.value === 'trades' ? 'cursor-not-allowed opacity-50' : ''}`}
           >
             {option.label}
           </button>
         ))}
       </div>
-      <div className="flex shrink-0 rounded-lg bg-gray-100 p-1">
+      <div className="flex shrink-0 rounded-lg bg-surface-soft p-1">
         {MOVING_AVERAGE_OPTIONS.map((option) => (
           <button
             key={option.value}
@@ -495,10 +495,10 @@ const ChartHeader = ({
             disabled={mode === 'trades' && option.value !== 'off'}
             className={`h-7 rounded-md px-2 text-[11px] font-semibold transition-colors ${
               movingAverageWindow === option.value
-                ? 'bg-white text-amber-600 shadow-sm'
+                ? 'bg-surface-base text-amber-600 shadow-sm'
                 : mode === 'trades' && option.value !== 'off'
-                  ? 'cursor-not-allowed text-gray-300'
-                  : 'text-gray-400 hover:text-gray-700'
+                  ? 'cursor-not-allowed text-text-subtle/60'
+                  : 'text-text-subtle hover:text-text-body'
             }`}
           >
             {option.label}
@@ -507,7 +507,7 @@ const ChartHeader = ({
       </div>
     </div>
 
-    <div className="flex gap-1 overflow-x-auto rounded-lg bg-gray-100 p-1">
+    <div className="flex gap-1 overflow-x-auto rounded-lg bg-surface-soft p-1">
       {areaOptions.map((option) => (
         <button
           key={option.area}
@@ -515,11 +515,11 @@ const ChartHeader = ({
           title={`전용 ${formatArea(option.area)}㎡ · ${option.transactionCount}건`}
           onClick={() => onAreaChange(option.area)}
           className={`flex h-10 shrink-0 flex-col items-center justify-center rounded-md px-3 text-xs font-medium leading-tight transition-colors ${
-            isSameArea(option.area, selectedArea) ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'
+            isSameArea(option.area, selectedArea) ? 'bg-surface-base text-brand-700 shadow-sm' : 'text-text-muted hover:text-text-body'
           }`}
         >
           <span>{formatPyeong(option.area)}</span>
-          <span className="text-[10px] font-normal text-gray-400">전용 {formatArea(option.area)}㎡</span>
+          <span className="text-[10px] font-normal text-text-subtle">전용 {formatArea(option.area)}㎡</span>
         </button>
       ))}
     </div>

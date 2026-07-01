@@ -30,7 +30,7 @@ export const markerContent = (price: number, tradeType?: string | null): string 
       min-width: 58px;
       padding: 3px 8px 4px;
       border-radius: 9px 9px 6px 6px;
-      background: #323241;
+      background: #0f172a;
       color: #ffffff;
       font-size: 10px;
       line-height: 1;
@@ -47,7 +47,7 @@ export const markerContent = (price: number, tradeType?: string | null): string 
       padding: 6px 9px 7px;
       border-radius: 8px;
       border: 1px solid rgba(255,255,255,0.72);
-      background: linear-gradient(180deg, #6978F0 0%, #5365DE 100%);
+      background: linear-gradient(180deg, #0e7490 0%, #005a71 100%);
       color: #ffffff;
       font-size: 17px;
       line-height: 1;
@@ -65,7 +65,7 @@ export const markerContent = (price: number, tradeType?: string | null): string 
         height: 12px;
         border-right: 1px solid rgba(255,255,255,0.72);
         border-bottom: 1px solid rgba(255,255,255,0.72);
-        background: #5365DE;
+        background: #005a71;
         transform: translateX(-50%) rotate(45deg);
       "></span>
     </div>
@@ -110,7 +110,7 @@ export const popupMarkerContent = (
         width: 22px;
         height: 22px;
         border-radius: 5px 5px 4px 5px;
-        background: #5B6DF1;
+        background: #0e7490;
         border: 1px solid rgba(255,255,255,0.9);
         transform: translateX(-50%) rotate(45deg);
         box-shadow: 0 1px 0 rgba(255,255,255,0.42) inset;
@@ -122,7 +122,7 @@ export const popupMarkerContent = (
         width: 24px;
         height: 19px;
         border-radius: 7px 7px 8px 8px;
-        background: linear-gradient(180deg, #6978F0 0%, #5365DE 100%);
+        background: linear-gradient(180deg, #0e7490 0%, #005a71 100%);
         border: 1px solid rgba(255,255,255,0.92);
         transform: translateX(-50%);
         box-shadow: 0 1px 0 rgba(255,255,255,0.32) inset;
@@ -160,7 +160,7 @@ export const popupMarkerContent = (
       ${safePrice ? `
         <div style="
           margin-top: 2px;
-          color: #5365DE;
+          color: #005a71;
           font-size: 11px;
           line-height: 1;
           font-weight: 900;
@@ -180,7 +180,7 @@ export const groupMarkerContent = (label: string, count: number): string => `
     padding: 7px 10px;
     border-radius: 999px;
     border: 1px solid rgba(255,255,255,0.86);
-    background: #31323D;
+    background: #0f172a;
     color: #ffffff;
     cursor: pointer;
     user-select: none;
@@ -200,7 +200,7 @@ export const groupMarkerContent = (label: string, count: number): string => `
     <span style="
       padding: 3px 6px;
       border-radius: 999px;
-      background: #5B6DF1;
+      background: #0e7490;
       font-size: 11px;
       line-height: 1;
       font-weight: 800;
